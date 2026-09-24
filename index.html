@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proyección de Natalidad y Demografía - Argentina</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            950: '#022c22',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar and SVG element styles */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        .dept-path {
+            transition: fill 0.3s ease, stroke 0.2s ease, opacity 0.2s;
+            cursor: pointer;
+            stroke: #1e293b;
+            stroke-width: 0.5px;
+        }
+        .dept-path:hover {
+            stroke: #38bdf8;
+            stroke-width: 1.5px;
+            filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.5));
+            z-index: 10;
+        }
+        /* Custom glassmorphism styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans overflow-hidden bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white">
+
+    <header class="border-b border-slate-800 bg-slate-900/80 px-6 py-4 flex flex-wrap justify-between items-center z-20 gap-4">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                <i data-lucide="map-pin" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    Simulador Demográfico & Natalidad 
+                    <span class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        Argentina 2022 - 2050
+                    </span>
+                </h1>
+                <p class="text-xs text-slate-400">Proyecciones regionalizadas por departamento basadas en tasa global de fecundidad (TGF)</p>
+            </div>
+        </div>
+
+        <!-- Global Quick Stats Header -->
+        <div class="flex items-center space-x-6 text-sm">
+            <div class="bg-slate-800/60 border border-slate-700/50 px-4 py-1.5 rounded-lg">
+                <span class="text-xs text-slate-400 block">Población Total Est.</span>
+                <span id="stat-pop" class="text-base font-semibold text-emerald-400">46,044,703</span>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/50 px-4 py-1.5 rounded-lg">
+                <span class="text-xs text-slate-400 block">Nacimientos / Año</span>
+                <span id="stat-births" class="text-base font-semibold text-sky-400">485,210</span>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/50 px-4 py-1.5 rounded-lg">
+                <span class="text-xs text-slate-400 block">Tasa de Fecundidad Hijos/Mujer</span>
+                <span id="stat-tgf" class="text-base font-semibold text-amber-400">1.45</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Controls Sidebar -->
+        <aside class="w-80 border-r border-slate-800 bg-slate-900/50 p-5 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
+            <div>
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-4 h-4 text-emerald-400"></i>
+                    Escenario de Proyección
+                </h2>
+                <div class="grid grid-cols-3 gap-2 p-1 bg-slate-950 rounded-lg border border-slate-800">
+                    <button onclick="setScenario('low')" id="btn-scenario-low" class="scenario-btn px-2 py-2 text-xs font-medium rounded-md transition-all text-slate-400 hover:text-white">Bajo</button>
+                    <button onclick="setScenario('medium')" id="btn-scenario-medium" class="scenario-btn px-2 py-2 text-xs font-medium rounded-md bg-emerald-600 text-white shadow-lg shadow-emerald-900/50">Medio</button>
+                    <button onclick="setScenario('high')" id="btn-scenario-high" class="scenario-btn px-2 py-2 text-xs font-medium rounded-md transition-all text-slate-400 hover:text-white">Alto</button>
+                </div>
+            </div>
+
+            <!-- Parameters Adjustments -->
+            <div class="space-y-4">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-4 h-4 text-emerald-400"></i>
+                    Ajuste Fecundidad (TGF)
+                </h2>
+                
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span class="text-slate-300">Tasa Global Fecundidad</span>
+                        <span id="label-tgf" class="font-bold text-emerald-400">1.45</span>
+                    </div>
+                    <input type="range" id="input-tgf" min="0.8" max="2.5" step="0.05" value="1.45" oninput="updateParameters()" class="w-full accent-emerald-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0.8 (Muy Baja)</span>
+                        <span>1.45 (Actual)</span>
+                        <span>2.1 (Reemplazo)</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span class="text-slate-300">Variación Migratoria Anual</span>
+                        <span id="label-migration" class="font-bold text-emerald-400">+0.10%</span>
+                    </div>
+                    <input type="range" id="input-migration" min="-0.5" max="0.5" step="0.05" value="0.10" oninput="updateParameters()" class="w-full accent-emerald-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Metric Selection -->
+            <div>
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+                    Métrica Representada
+                </h2>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-800 bg-slate-950/50 hover:border-slate-700 cursor-pointer transition">
+                        <input type="radio" name="metric" value="birth_rate" checked onchange="setMetric(this.value)" class="text-emerald-500 focus:ring-emerald-500">
+                        <div>
+                            <div class="text-xs font-semibold text-slate-200">Tasa Bruta de Natalidad</div>
+                            <div class="text-[10px] text-slate-400">Nacimientos por cada 1,000 hab.</div>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-800 bg-slate-950/50 hover:border-slate-700 cursor-pointer transition">
+                        <input type="radio" name="metric" value="population_change" onchange="setMetric(this.value)" class="text-emerald-500 focus:ring-emerald-500">
+                        <div>
+                            <div class="text-xs font-semibold text-slate-200">% Crecimiento Poblacional</div>
+                            <div class="text-[10px] text-slate-400">Cambio relativo con respecto a 2022</div>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-800 bg-slate-950/50 hover:border-slate-700 cursor-pointer transition">
+                        <input type="radio" name="metric" value="total_births" onchange="setMetric(this.value)" class="text-emerald-500 focus:ring-emerald-500">
+                        <div>
+                            <div class="text-xs font-semibold text-slate-200">Nacimientos Totales Estimados</div>
+                            <div class="text-[10px] text-slate-400">Cantidad absoluta por departamento</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Dynamic Legend Card -->
+            <div class="mt-auto p-4 rounded-xl border border-slate-800 bg-slate-950/80">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="legend-title" class="text-xs font-semibold text-slate-300">Tasa de Natalidad (‰)</span>
+                    <i data-lucide="info" class="w-3.5 h-3.5 text-slate-500"></i>
+                </div>
+                <div id="legend-bar" class="h-3 w-full rounded-full my-2 bg-gradient-to-r from-emerald-950 via-emerald-600 to-emerald-300"></div>
+                <div id="legend-labels" class="flex justify-between text-[10px] text-slate-400 font-mono">
+                    <span>Low</span>
+                    <span>Mid</span>
+                    <span>High</span>
+                </div>
+            </div>
+        </aside>
+
+        <section class="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden p-4">
+            <!-- Map Container SVG -->
+            <div id="map-container" class="w-full h-full flex items-center justify-center relative">
+                <svg id="argentina-svg" viewBox="0 0 700 900" class="max-h-full max-w-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.8)]">
+                    <!-- SVG Groups will be dynamically created and populated -->
+                    <g id="map-departments"></g>
+                    <g id="map-insets"></g>
+                </svg>
+            </div>
+
+            <!-- Floating Hover Tooltip -->
+            <div id="tooltip" class="absolute hidden pointer-events-none glass-panel p-4 rounded-xl shadow-2xl z-30 min-w-[220px] transition-all duration-75 border border-slate-700/80">
+                <div class="flex items-center justify-between mb-1 pb-1 border-b border-slate-700/60">
+                    <h3 id="tooltip-dept" class="font-bold text-sm text-white">Departamento</h3>
+                    <span id="tooltip-prov" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">Provincia</span>
+                </div>
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex justify-between text-slate-300">
+                        <span>Población Est.:</span>
+                        <span id="tooltip-pop" class="font-semibold text-white">0</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Nacimientos/Año:</span>
+                        <span id="tooltip-births" class="font-semibold text-emerald-400">0</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Tasa Natalidad:</span>
+                        <span id="tooltip-rate" class="font-semibold text-sky-400">0 ‰</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Variación vs 2022:</span>
+                        <span id="tooltip-growth" class="font-semibold text-amber-400">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Playbar Controller Floating Overlay -->
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-2xl glass-panel p-4 rounded-2xl shadow-2xl border border-slate-800/80 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <button id="btn-play" onclick="togglePlay()" class="p-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition shadow-lg shadow-emerald-500/20">
+                            <i id="play-icon" data-lucide="play" class="w-5 h-5 fill-current"></i>
+                        </button>
+                        <button onclick="resetTimeline()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="text-center">
+                        <span class="text-xs uppercase text-slate-400 tracking-wider font-semibold">Año de Proyección</span>
+                        <div id="year-display" class="text-3xl font-black tracking-tight text-white font-mono">2022</div>
+                    </div>
+
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block">Progreso</span>
+                        <span id="progress-percent" class="text-sm font-semibold text-emerald-400">Base 2022</span>
+                    </div>
+                </div>
+
+                <div class="relative flex items-center">
+                    <input type="range" id="timeline-slider" min="2022" max="2050" value="2022" oninput="onYearChange(this.value)" class="w-full accent-emerald-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                </div>
+                <div class="flex justify-between text-[11px] font-mono text-slate-500 px-1">
+                    <span>2022 (Censo)</span>
+                    <span>2030</span>
+                    <span>2040</span>
+                    <span>2050 (Proyección)</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // State variables
+        let currentYear = 2022;
+        let selectedScenario = 'medium'; // low, medium, high
+        let currentMetric = 'birth_rate'; // birth_rate, population_change, total_births
+        let isPlaying = false;
+        let playInterval = null;
+        let currentTgf = 1.45;
+        let currentMigration = 0.10;
+
+        // Base Data per key regions/departments
+        const departmentsData = [];
+
+        // Color palettes for different metrics
+        const palettes = {
+            emerald: ['#022c22', '#064e3b', '#047857', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'],
+            blue: ['#082f49', '#075985', '#0369a1', '#0284c7', '#38bdf8', '#7dd3fc', '#bae6fd'],
+            amber: ['#451a03', '#78350f', '#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fde68a']
+        };
+
+        // Initialize icons
+        lucide.createIcons();
+
+        // Generates realistic polygon clusters resembling the Argentine departments & map layout
+        function generateArgentinaMapData() {
+            // Region generators with scaled offsets
+            const regions = [
+                // CABA & GBA
+                { name: "CABA", prov: "CABA", pop: 3120612, rate: 10.2, x: 440, y: 380, count: 5, spread: 8 },
+                { name: "La Matanza", prov: "Buenos Aires", pop: 1837411, rate: 13.8, x: 430, y: 390, count: 6, spread: 12 },
+                { name: "La Plata", prov: "Buenos Aires", pop: 772618, rate: 12.1, x: 450, y: 400, count: 4, spread: 10 },
+                // Buenos Aires PBA
+                { name: "General Pueyrredón", prov: "Buenos Aires", pop: 682605, rate: 11.5, x: 430, y: 480, count: 5, spread: 15 },
+                { name: "Bahía Blanca", prov: "Buenos Aires", pop: 335190, rate: 11.8, x: 380, y: 510, count: 5, spread: 18 },
+                { name: "PBA Interior", prov: "Buenos Aires", pop: 3500000, rate: 12.5, x: 390, y: 420, count: 22, spread: 35 },
+                // Córdoba
+                { name: "Capital", prov: "Córdoba", pop: 1565112, rate: 12.4, x: 310, y: 330, count: 6, spread: 12 },
+                { name: "Río Cuarto", prov: "Córdoba", pop: 257000, rate: 12.9, x: 300, y: 380, count: 5, spread: 16 },
+                { name: "Córdoba Norte/Sur", prov: "Córdoba", pop: 1800000, rate: 13.1, x: 320, y: 310, count: 14, spread: 30 },
+                // Santa Fe
+                { name: "Rosario", prov: "Santa Fe", pop: 1342619, rate: 12.0, x: 390, y: 340, count: 6, spread: 12 },
+                { name: "La Capital", prov: "Santa Fe", pop: 573214, rate: 13.2, x: 380, y: 300, count: 5, spread: 14 },
+                { name: "Santa Fe Resto", prov: "Santa Fe", pop: 1600000, rate: 13.5, x: 370, y: 260, count: 12, spread: 25 },
+                // NOA (Jujuy, Salta, Tucuman, Catamarca, La Rioja, Santiago)
+                { name: "Capital", prov: "Tucumán", pop: 605000, rate: 15.8, x: 260, y: 180, count: 5, spread: 10 },
+                { name: "Capital / La Caldera", prov: "Salta", pop: 627100, rate: 16.2, x: 250, y: 110, count: 8, spread: 22 },
+                { name: "Doctor Manuel Belgrano", prov: "Jujuy", pop: 321000, rate: 15.5, x: 230, y: 60, count: 7, spread: 18 },
+                { name: "Capital", prov: "Santiago del Estero", pop: 298000, rate: 15.1, x: 310, y: 200, count: 10, spread: 28 },
+                { name: "Capital", prov: "Catamarca", pop: 180000, rate: 14.2, x: 230, y: 220, count: 6, spread: 20 },
+                { name: "Capital", prov: "La Rioja", pop: 210000, rate: 14.0, x: 220, y: 270, count: 6, spread: 22 },
+                // NEA (Misiones, Corrientes, Chaco, Formosa)
+                { name: "Capital", prov: "Misiones", pop: 380000, rate: 16.8, x: 530, y: 160, count: 8, spread: 20 },
+                { name: "San Fernando", prov: "Chaco", pop: 410000, rate: 16.1, x: 420, y: 180, count: 8, spread: 24 },
+                { name: "Capital", prov: "Corrientes", pop: 430000, rate: 15.9, x: 450, y: 220, count: 9, spread: 25 },
+                { name: "Formosa", prov: "Formosa", pop: 270000, rate: 16.5, x: 430, y: 120, count: 6, spread: 22 },
+                // Cuyo (Mendoza, San Juan, San Luis)
+                { name: "Capital / Guaymallén", prov: "Mendoza", pop: 1050000, rate: 13.0, x: 190, y: 390, count: 8, spread: 20 },
+                { name: "Capital / Chimbas", prov: "San Juan", pop: 540000, rate: 14.1, x: 180, y: 330, count: 6, spread: 18 },
+                { name: "Juan Martín de Pueyrredón", prov: "San Luis", pop: 240000, rate: 13.4, x: 250, y: 380, count: 6, spread: 22 },
+                // Patagonia (Neuquén, Río Negro, Chubut, Santa Cruz, Tierra del Fuego)
+                { name: "Confluencia", prov: "Neuquén", pop: 400000, rate: 13.2, x: 170, y: 520, count: 6, spread: 25 },
+                { name: "General Roca", prov: "Río Negro", pop: 380000, rate: 13.0, x: 210, y: 540, count: 7, spread: 30 },
+                { name: "Escalante / Rawson", prov: "Chubut", pop: 260000, rate: 13.6, x: 190, y: 660, count: 8, spread: 35 },
+                { name: "Güer Aike", prov: "Santa Cruz", pop: 140000, rate: 13.9, x: 160, y: 770, count: 7, spread: 40 },
+                { name: "Río Grande / Ushuaia", prov: "Tierra del Fuego", pop: 190000, rate: 14.5, x: 230, y: 860, count: 4, spread: 20 }
+            ];
+
+            let idCounter = 1;
+            const departments = [];
+
+            regions.forEach(reg => {
+                for (let i = 0; i < reg.count; i++) {
+                    const angle = (i / reg.count) * Math.PI * 2;
+                    const dist = Math.random() * reg.spread;
+                    const cx = reg.x + Math.cos(angle) * dist;
+                    const cy = reg.y + Math.sin(angle) * dist;
+
+                    // Generate stylized polygonal path around center
+                    const points = [];
+                    const numSides = 5 + Math.floor(Math.random() * 3);
+                    const radius = 8 + Math.random() * 10;
+                    
+                    for (let j = 0; j < numSides; j++) {
+                        const a = (j / numSides) * Math.PI * 2;
+                        const r = radius * (0.7 + Math.random() * 0.6);
+                        const px = Math.round(cx + Math.cos(a) * r);
+                        const py = Math.round(cy + Math.sin(a) * r);
+                        points.push(`${px},${py}`);
+                    }
+
+                    const pathStr = `M ${points.join(' L ')} Z`;
+                    const deptPop = Math.round((reg.pop / reg.count) * (0.8 + Math.random() * 0.4));
+                    const baseRate = Number((reg.rate + (Math.random() * 1.5 - 0.75)).toFixed(1));
+
+                    departments.push({
+                        id: `dept-${idCounter++}`,
+                        name: `${reg.name} Sector ${i+1}`,
+                        prov: reg.prov,
+                        basePop: deptPop,
+                        baseRate: baseRate,
+                        path: pathStr
+                    });
+                }
+            });
+
+            return departments;
+        }
+
+        function calculateDeptStats(dept, year) {
+            const yearDiff = year - 2022;
+            
+            // Adjust factor based on global TGF and scenario settings
+            let tgfImpact = (currentTgf - 1.45) * 0.15;
+            let scenarioImpact = 0;
+            if (selectedScenario === 'low') scenarioImpact = -0.008;
+            if (selectedScenario === 'high') scenarioImpact = +0.008;
+
+            // Annual population growth rate formula
+            const baseGrowthRate = 0.006 + (currentMigration / 100) + scenarioImpact;
+            
+            // Simulated population
+            const projectedPop = Math.round(dept.basePop * Math.pow(1 + baseGrowthRate, yearDiff));
+            
+            // Birth rate (declines over time in all modern models)
+            const rateTrend = -0.08 * yearDiff;
+            const projectedRate = Math.max(5.0, Number((dept.baseRate + rateTrend + (tgfImpact * 10)).toFixed(1)));
+            
+            // Annual Births
+            const projectedBirths = Math.round((projectedPop * projectedRate) / 1000);
+
+            // % Growth relative to 2022
+            const popGrowthPct = Number((((projectedPop - dept.basePop) / dept.basePop) * 100).toFixed(1));
+
+            return {
+                population: projectedPop,
+                birthRate: projectedRate,
+                births: projectedBirths,
+                growthPct: popGrowthPct
+            };
+        }
+
+        function renderMap() {
+            const svgGroup = document.getElementById('map-departments');
+            svgGroup.innerHTML = '';
+
+            departmentsData.forEach(dept => {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', dept.path);
+                path.setAttribute('id', dept.id);
+                path.setAttribute('class', 'dept-path');
+                
+                // Mouse interactive events
+                path.addEventListener('mousemove', (e) => showTooltip(e, dept));
+                path.addEventListener('mouseleave', hideTooltip);
+
+                svgGroup.appendChild(path);
+            });
+
+            // Inset Map for Malvinas & Antártida box
+            const insetGroup = document.getElementById('map-insets');
+            insetGroup.innerHTML = `
+                <g transform="translate(320, 780)">
+                    <rect width="110" height="90" fill="#0f172a" stroke="#334155" stroke-dasharray="3,3" rx="8" opacity="0.8"/>
+                    <text x="10" y="18" fill="#94a3b8" font-size="9" font-weight="bold">Islas Malvinas</text>
+                    <path d="M25,35 Q35,25 45,35 T65,40 T85,35" fill="none" stroke="#047857" stroke-width="2"/>
+                    <path d="M30,55 Q50,45 70,60" fill="none" stroke="#047857" stroke-width="2"/>
+                </g>
+            `;
+
+            updateMapColors();
+        }
+
+        function updateMapColors() {
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+
+            // Calculate min/max range for current metric across all depts
+            const deptCalculated = departmentsData.map(dept => {
+                const stats = calculateDeptStats(dept, currentYear);
+                let val = stats.birthRate;
+                if (currentMetric === 'population_change') val = stats.growthPct;
+                if (currentMetric === 'total_births') val = stats.births;
+
+                if (val < minVal) minVal = val;
+                if (val > maxVal) maxVal = val;
+
+                return { id: dept.id, val: val, stats: stats };
+            });
+
+            // Dynamic color assignment
+            const currentPalette = currentMetric === 'birth_rate' ? palettes.emerald : 
+                                 currentMetric === 'population_change' ? palettes.blue : palettes.amber;
+
+            deptCalculated.forEach(item => {
+                const elem = document.getElementById(item.id);
+                if (elem) {
+                    const normalized = maxVal === minVal ? 0.5 : (item.val - minVal) / (maxVal - minVal);
+                    const colorIndex = Math.min(palettes.emerald.length - 1, Math.floor(normalized * currentPalette.length));
+                    elem.setAttribute('fill', currentPalette[colorIndex]);
+                }
+            });
+
+            // Update legend UI labels
+            const legendTitle = document.getElementById('legend-title');
+            const legendBar = document.getElementById('legend-bar');
+            const legendLabels = document.getElementById('legend-labels');
+
+            if (currentMetric === 'birth_rate') {
+                legendTitle.innerText = "Tasa de Natalidad (‰)";
+                legendBar.className = "h-3 w-full rounded-full my-2 bg-gradient-to-r from-emerald-950 via-emerald-600 to-emerald-300";
+                legendLabels.innerHTML = `<span>${minVal.toFixed(1)} ‰</span><span>${((minVal+maxVal)/2).toFixed(1)} ‰</span><span>${maxVal.toFixed(1)} ‰</span>`;
+            } else if (currentMetric === 'population_change') {
+                legendTitle.innerText = "Crecimiento Poblacional (%)";
+                legendBar.className = "h-3 w-full rounded-full my-2 bg-gradient-to-r from-sky-950 via-sky-600 to-sky-300";
+                legendLabels.innerHTML = `<span>${minVal.toFixed(1)}%</span><span>${((minVal+maxVal)/2).toFixed(1)}%</span><span>${maxVal.toFixed(1)}%</span>`;
+            } else {
+                legendTitle.innerText = "Nacimientos Totales";
+                legendBar.className = "h-3 w-full rounded-full my-2 bg-gradient-to-r from-amber-950 via-amber-600 to-amber-300";
+                legendLabels.innerHTML = `<span>${Math.round(minVal)}</span><span>${Math.round((minVal+maxVal)/2)}</span><span>${Math.round(maxVal)}</span>`;
+            }
+
+            // Update Global Header Stats Sum
+            let totalPop = 0;
+            let totalBirths = 0;
+            departmentsData.forEach(d => {
+                const st = calculateDeptStats(d, currentYear);
+                totalPop += st.population;
+                totalBirths += st.births;
+            });
+
+            document.getElementById('stat-pop').innerText = totalPop.toLocaleString('es-AR');
+            document.getElementById('stat-births').innerText = totalBirths.toLocaleString('es-AR');
+            document.getElementById('stat-tgf').innerText = currentTgf.toFixed(2);
+        }
+
+        function showTooltip(event, dept) {
+            const tooltip = document.getElementById('tooltip');
+            const stats = calculateDeptStats(dept, currentYear);
+
+            document.getElementById('tooltip-dept').innerText = dept.name;
+            document.getElementById('tooltip-prov').innerText = dept.prov;
+            document.getElementById('tooltip-pop').innerText = stats.population.toLocaleString('es-AR');
+            document.getElementById('tooltip-births').innerText = stats.births.toLocaleString('es-AR');
+            document.getElementById('tooltip-rate').innerText = `${stats.birthRate} ‰`;
+            document.getElementById('tooltip-growth').innerText = `${stats.growthPct > 0 ? '+' : ''}${stats.growthPct}%`;
+
+            tooltip.classList.remove('hidden');
+            
+            // Positioning calculation to prevent boundary overflows
+            const x = event.clientX + 15;
+            const y = event.clientY + 15;
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y}px`;
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.add('hidden');
+        }
+
+        function onYearChange(val) {
+            currentYear = parseInt(val);
+            document.getElementById('year-display').innerText = currentYear;
+            
+            const pct = Math.round(((currentYear - 2022) / (2050 - 2022)) * 100);
+            document.getElementById('progress-percent').innerText = currentYear === 2022 ? 'Base 2022' : `+${currentYear - 2022} años (${pct}%)`;
+            
+            updateMapColors();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const playIcon = document.getElementById('play-icon');
+            
+            if (isPlaying) {
+                playIcon.setAttribute('data-lucide', 'pause');
+                lucide.createIcons();
+                playInterval = setInterval(() => {
+                    if (currentYear < 2050) {
+                        currentYear++;
+                        document.getElementById('timeline-slider').value = currentYear;
+                        onYearChange(currentYear);
+                    } else {
+                        togglePlay(); // Pause at end
+                    }
+                }, 600);
+            } else {
+                playIcon.setAttribute('data-lucide', 'play');
+                lucide.createIcons();
+                clearInterval(playInterval);
+            }
+        }
+
+        function resetTimeline() {
+            if (isPlaying) togglePlay();
+            currentYear = 2022;
+            document.getElementById('timeline-slider').value = 2022;
+            onYearChange(2022);
+        }
+
+        function setScenario(scenario) {
+            selectedScenario = scenario;
+            
+            // Update button styles
+            ['low', 'medium', 'high'].forEach(s => {
+                const btn = document.getElementById(`btn-scenario-${s}`);
+                if (s === scenario) {
+                    btn.className = "scenario-btn px-2 py-2 text-xs font-medium rounded-md bg-emerald-600 text-white shadow-lg shadow-emerald-900/50 font-bold";
+                } else {
+                    btn.className = "scenario-btn px-2 py-2 text-xs font-medium rounded-md transition-all text-slate-400 hover:text-white";
+                }
+            });
+
+            // Adjust default TGF according to scenario
+            if (scenario === 'low') currentTgf = 1.15;
+            if (scenario === 'medium') currentTgf = 1.45;
+            if (scenario === 'high') currentTgf = 1.85;
+
+            document.getElementById('input-tgf').value = currentTgf;
+            document.getElementById('label-tgf').innerText = currentTgf.toFixed(2);
+
+            updateMapColors();
+        }
+
+        function updateParameters() {
+            currentTgf = parseFloat(document.getElementById('input-tgf').value);
+            currentMigration = parseFloat(document.getElementById('input-migration').value);
+
+            document.getElementById('label-tgf').innerText = currentTgf.toFixed(2);
+            document.getElementById('label-migration').innerText = `${currentMigration >= 0 ? '+' : ''}${currentMigration.toFixed(2)}%`;
+
+            updateMapColors();
+        }
+
+        function setMetric(metric) {
+            currentMetric = metric;
+            updateMapColors();
+        }
+
+        // Initialize application on load
+        window.onload = function() {
+            departmentsData.push(...generateArgentinaMapData());
+            renderMap();
+        };
+    </script>
+</body>
+</html>
