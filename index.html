@@ -12,7 +12,7 @@
         }
 
         body {
-            /* Fondo gris para destacar el mapa y mejorar la lectura de textos oscuros */
+            /* Fondo gris para mejorar la lectura */
             background-color: #e5e7eb;
             color: #1f2937;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -23,7 +23,7 @@
             padding: 24px 16px;
         }
 
-        /* Barra de botones con contenedor oscuro para mantener el estilo visual */
+        /* Botones de navegación */
         .button-group {
             background: #1f2937;
             padding: 5px;
@@ -75,6 +75,22 @@
             display: block;
         }
 
+        /* Bordes (stroke) en departamentos y ciudades */
+        #map-container svg path {
+            stroke: #374151 !important;        /* Color del borde: gris oscuro */
+            stroke-width: 0.4px !important;    /* Grosor del borde */
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: fill 0.2s ease, stroke-width 0.2s ease;
+        }
+
+        /* Efecto al pasar el cursor sobre las ciudades/departamentos */
+        #map-container svg path:hover {
+            stroke: #000000 !important;
+            stroke-width: 1px !important;
+            cursor: pointer;
+        }
+
         /* Indicador de carga */
         .loading {
             color: #4b5563;
@@ -91,29 +107,13 @@
         <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguay</button>
     </div>
 
-    <!-- Contenedor del SVG -->
+    <!-- Contenedor donde se inserta el SVG -->
     <div id="map-container">
         <div class="loading">Cargando mapa...</div>
-        
-        /* Agrega o actualiza estas reglas en tu sección <style> */
-#map-container svg path {
-    stroke: #374151 !important;        /* Color del borde (Gris oscuro) */
-    stroke-width: 0.5px !important;    /* Grosor de la línea */
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: fill 0.2s ease;
-}
-
-/* Opcional: Efecto al pasar el mouse sobre un departamento */
-#map-container svg path:hover {
-    stroke: #000000 !important;
-    stroke-width: 1.2px !important;
-    cursor: pointer;
-}
     </div>
 
     <script>
-        // Enlaces en bruto (raw) a ambos Gists de GitHub
+        // Enlaces raw a los Gists de GitHub
         const URL_BOLIVIA = 'https://gist.githubusercontent.com/planpatriagrande/4101eaeac508e4a65d239ada4b516466/raw/gistfile1.txt';
         const URL_PARAGUAY = 'https://gist.githubusercontent.com/planpatriagrande/8f3f926b6c83d27510f4566fe6aa053e/raw/gistfile1.txt';
 
@@ -122,7 +122,6 @@
             const btnBolivia = document.getElementById('btn-bolivia');
             const btnParaguay = document.getElementById('btn-paraguay');
 
-            // Cambiar clase activa entre los botones
             if (pais === 'bolivia') {
                 btnBolivia.classList.add('active');
                 btnParaguay.classList.remove('active');
@@ -146,7 +145,7 @@
             }
         }
 
-        // Cargar mapa inicial (Bolivia)
+        // Cargar Bolivia por defecto
         cargarMapa('bolivia');
     </script>
 </body>
