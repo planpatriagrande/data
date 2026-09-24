@@ -12,7 +12,6 @@
         }
 
         body {
-            /* Fondo negro */
             background-color: #000000;
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -75,7 +74,7 @@
             display: block;
         }
 
-        /* Forzar que todos los textos dentro del SVG sean blancos */
+        /* Forzar texto blanco */
         #map-container svg text,
         #map-container svg tspan {
             fill: #ffffff !important;
@@ -83,21 +82,19 @@
 
         /* Bordes (stroke) en departamentos y ciudades */
         #map-container svg path {
-            stroke: #1f2937 !important;        /* Color del borde (Gris oscuro) */
-            stroke-width: 0.4px !important;    /* Grosor del borde */
+            stroke: #1f2937 !important;
+            stroke-width: 0.4px !important;
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: fill 0.2s ease, stroke-width 0.2s ease;
         }
 
-        /* Efecto al pasar el cursor sobre las ciudades/departamentos */
         #map-container svg path:hover {
             stroke: #ffffff !important;
             stroke-width: 1px !important;
             cursor: pointer;
         }
 
-        /* Indicador de carga */
         .loading {
             color: #9ca3af;
             font-size: 15px;
@@ -107,21 +104,19 @@
 </head>
 <body>
 
-    <!-- Botones de navegación -->
     <div class="button-group">
-        <button class="btn" id="btn-bolivia" onclick="cargarMapa('bolivia')">Bolivia</button>
-        <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguay</button>
+        <button class="btn" id="btn-bolivia" onclick="cargarMapa('bolivia')">Bolivianos</button>
+        <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguayos</button>
     </div>
 
-    <!-- Contenedor donde se inserta el SVG -->
     <div id="map-container">
         <div class="loading">Cargando mapa...</div>
     </div>
 
     <script>
-        // Enlaces raw a los Gists de GitHub
-        const URL_BOLIVIA = 'https://gist.githubusercontent.com/planpatriagrande/4101eaeac508e4a65d239ada4b516466/raw/gistfile1.txt';
-        const URL_PARAGUAY = 'https://gist.githubusercontent.com/planpatriagrande/8f3f926b6c83d27510f4566fe6aa053e/raw/gistfile1.txt';
+        // Archivos SVG locales cargados directamente en tu repositorio
+        const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
+        const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
@@ -138,7 +133,7 @@
 
             const url = (pais === 'bolivia') ? URL_BOLIVIA : URL_PARAGUAY;
 
-            container.innerHTML = `<div class="loading">Cargando mapa de ${pais}...</div>`;
+            container.innerHTML = `<div class="loading">Cargando mapa...</div>`;
 
             try {
                 const response = await fetch(url);
@@ -151,7 +146,6 @@
             }
         }
 
-        // Cargar Bolivia por defecto
         cargarMapa('bolivia');
     </script>
 </body>
