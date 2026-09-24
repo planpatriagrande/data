@@ -12,8 +12,9 @@
         }
 
         body {
-            background-color: #0b0f19;
-            color: #ffffff;
+            /* Fondo gris para destacar el mapa y mejorar la lectura de textos oscuros */
+            background-color: #e5e7eb;
+            color: #1f2937;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
             flex-direction: column;
@@ -22,23 +23,23 @@
             padding: 24px 16px;
         }
 
-        /* Estilo para la barra de botones basada en tu referencia */
+        /* Barra de botones con contenedor oscuro para mantener el estilo visual */
         .button-group {
-            background: #111827;
-            padding: 4px;
+            background: #1f2937;
+            padding: 5px;
             border-radius: 12px;
             display: inline-flex;
             gap: 4px;
-            border: 1px solid #1f2937;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            border: 1px solid #374151;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .btn {
             background: transparent;
             border: none;
             color: #9ca3af;
-            padding: 8px 24px;
+            padding: 10px 28px;
             font-size: 15px;
             font-weight: 600;
             border-radius: 8px;
@@ -57,14 +58,14 @@
             color: #ffffff;
         }
 
-        /* Contenedor responsivo para el SVG */
+        /* Contenedor del mapa */
         #map-container {
             width: 100%;
             max-width: 900px;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 400px;
+            min-height: 500px;
         }
 
         #map-container svg {
@@ -76,8 +77,9 @@
 
         /* Indicador de carga */
         .loading {
-            color: #6b7280;
-            font-size: 14px;
+            color: #4b5563;
+            font-size: 15px;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -89,22 +91,22 @@
         <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguay</button>
     </div>
 
-    <!-- ÁREA DONDE SE RENDERIZA EL SVG DE TU GIST -->
+    <!-- Contenedor del SVG -->
     <div id="map-container">
         <div class="loading">Cargando mapa...</div>
     </div>
 
     <script>
-        // Enlaces en bruto (raw) desde tu Gist de GitHub
+        // Enlaces en bruto (raw) a ambos Gists de GitHub
         const URL_BOLIVIA = 'https://gist.githubusercontent.com/planpatriagrande/4101eaeac508e4a65d239ada4b516466/raw/gistfile1.txt';
-        const URL_PARAGUAY = URL_BOLIVIA; // Reemplazar con el enlace raw de Paraguay si subes otro Gist
+        const URL_PARAGUAY = 'https://gist.githubusercontent.com/planpatriagrande/8f3f926b6c83d27510f4566fe6aa053e/raw/gistfile1.txt';
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
             const btnBolivia = document.getElementById('btn-bolivia');
             const btnParaguay = document.getElementById('btn-paraguay');
 
-            // Actualizar clase activa en los botones
+            // Cambiar clase activa entre los botones
             if (pais === 'bolivia') {
                 btnBolivia.classList.add('active');
                 btnParaguay.classList.remove('active');
@@ -115,18 +117,20 @@
 
             const url = (pais === 'bolivia') ? URL_BOLIVIA : URL_PARAGUAY;
 
+            container.innerHTML = `<div class="loading">Cargando mapa de ${pais}...</div>`;
+
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Error al cargar el SVG');
                 const svgCode = await response.text();
                 container.innerHTML = svgCode;
             } catch (error) {
-                container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
+                container.innerHTML = `<div class="loading" style="color: #dc2626;">Error al cargar el mapa.</div>`;
                 console.error(error);
             }
         }
 
-        // Cargar mapa por defecto (Bolivia)
+        // Cargar mapa inicial (Bolivia)
         cargarMapa('bolivia');
     </script>
 </body>
