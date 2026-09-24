@@ -94,6 +94,22 @@
     <!-- Contenedor del SVG -->
     <div id="map-container">
         <div class="loading">Cargando mapa...</div>
+        
+        /* Agrega o actualiza estas reglas en tu sección <style> */
+#map-container svg path {
+    stroke: #374151 !important;        /* Color del borde (Gris oscuro) */
+    stroke-width: 0.5px !important;    /* Grosor de la línea */
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: fill 0.2s ease;
+}
+
+/* Opcional: Efecto al pasar el mouse sobre un departamento */
+#map-container svg path:hover {
+    stroke: #000000 !important;
+    stroke-width: 1.2px !important;
+    cursor: pointer;
+}
     </div>
 
     <script>
