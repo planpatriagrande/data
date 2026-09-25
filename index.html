@@ -147,7 +147,7 @@
         const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
-        // Banderas (Asegúrate de que tus archivos de bandera tengan estos nombres o cámbialos aquí)
+        // Banderas
         const BANDERA_PARAGUAY = './bandera_paraguay.svg';
         const BANDERA_BOLIVIA = './bandera_bolivia.svg';
         const BANDERA_PERU = './bandera_peru.svg';
@@ -256,15 +256,15 @@
                     svgCode = svgCode.replace(regex, rojo);
                 });
 
-                requestAnimationFrame(() => {
+                requestAnimationFrame(async () => {
                     container.innerHTML = svgCode;
                     
                     const svg = container.querySelector('svg');
                     if (svg) {
                         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         
-                        // Incrustar la bandera justo arriba del texto "2026"
-                        incrustarBandera(svg, urlBandera);
+                        // Incrustar el vector nativo de la bandera sobre el texto "2026"
+                        await incrustarBandera(svg, urlBandera);
 
                         resetearZoom(svg);
                         configurarPaths(svg);
@@ -282,35 +282,60 @@
             }
         }
 
-        function incrustarBandera(svg, urlBandera) {
+        async function incrustarBandera(svg, urlBandera) {
             if (!svg) return;
 
+            // Buscar el texto "2026"
             const elementosTexto = Array.from(svg.querySelectorAll('text, tspan'));
             const nodo2026 = elementosTexto.find(el => el.textContent.trim() === '2026');
 
-            if (nodo2026) {
-                const target = nodo2026.tagName.toLowerCase() === 'tspan' ? nodo2026.parentElement : nodo2026;
-                
-                const xText = parseFloat(target.getAttribute('x')) || 0;
-                const yText = parseFloat(target.getAttribute('y')) || 0;
+            if (!nodo2026) return;
 
-                // Tamaño en proporción 3:2
+            try {
+                // Descargar el SVG de la bandera
+                const res = await fetch(urlBandera);
+                if (!res.ok) throw new Error('No se pudo cargar la bandera');
+                const banderaSvgText = await res.text();
+
+                // Parsear a DOM
+                const parser = new DOMParser();
+                const docBandera = parser.parseFromString(banderaSvgText, 'image/svg+xml');
+                const svgBandera = docBandera.querySelector('svg');
+
+                if (!svgBandera) return;
+
+                // Calcular la caja delimitadora (BBox) real del elemento del texto
+                const target = nodo2026.tagName.toLowerCase() === 'tspan' ? nodo2026.parentElement : nodo2026;
+                const bbox = target.getBBox();
+
+                // Proporción 3:2
                 const ancho = 120;
                 const alto = 80;
 
-                // Centrado dinámico respecto al texto
-                const xPos = xText - (ancho / 2);
-                const yPos = yText - alto - 20; 
+                // Centrar dinámicamente respecto al ancho real del texto "2026"
+                const xPos = (bbox.x + bbox.width / 2) - (ancho / 2);
+                const yPos = bbox.y - alto - 20; // 20px arriba del "2026"
 
-                const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-                img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlBandera);
-                img.setAttribute('x', xPos);
-                img.setAttribute('y', yPos);
-                img.setAttribute('width', ancho);
-                img.setAttribute('height', alto);
-                img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                // Grupo contenedor
+                const grupo = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                grupo.setAttribute('transform', `translate(${xPos}, ${yPos})`);
 
-                svg.appendChild(img);
+                // Obtener viewBox de la bandera para mantener aspecto
+                const viewBox = svgBandera.getAttribute('viewBox') || `0 0 ${svgBandera.getAttribute('width') || 300} ${svgBandera.getAttribute('height') || 200}`;
+
+                // Inyectar sub-svg
+                const innerSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                innerSvg.setAttribute('width', ancho);
+                innerSvg.setAttribute('height', alto);
+                innerSvg.setAttribute('viewBox', viewBox);
+                innerSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                innerSvg.innerHTML = svgBandera.innerHTML;
+
+                grupo.appendChild(innerSvg);
+                svg.appendChild(grupo);
+
+            } catch (err) {
+                console.error('Error inyectando la bandera:', err);
             }
         }
 
