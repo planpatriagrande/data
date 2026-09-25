@@ -66,7 +66,7 @@
             min-height: 500px;
             position: relative;
             overflow: hidden;
-            touch-action: manipulation; /* Habilita el zoom nativo con pellizco en celulares */
+            touch-action: manipulation;
         }
 
         #map-container svg {
@@ -158,6 +158,23 @@
             '#00703F': '#7f1d1d'
         };
 
+        // Diccionario de equivalencias para códigos INDEC del AMBA/Buenos Aires
+        const codigosIndecAMBA = {
+            'p02001': 'Adolfo Alsina', 'p02007': 'Almirante Brown', 'p02014': 'Avellaneda',
+            'p02021': 'Bahía Blanca', 'p02028': 'Berazategui', 'p02035': 'Berisso',
+            'p02042': 'Campana', 'p02049': 'Cañuelas', 'p02056': 'Ensenada',
+            'p02061': 'La Matanza', 'p02063': 'La Plata', 'p02070': 'Lanús',
+            'p02077': 'Lomas de Zamora', 'p02084': 'Luján', 'p02091': 'Malvinas Argentinas',
+            'p02098': 'Merlo', 'p02105': 'Moreno', 'p02112': 'Morón',
+            'p02119': 'Pilar', 'p02126': 'Presidente Perón', 'p02133': 'Quilmes',
+            'p02140': 'San Fernando', 'p02147': 'San Isidro', 'p02154': 'San Martín',
+            'p02161': 'San Miguel', 'p02168': 'San Vicente', 'p02175': 'Tigre',
+            'p02182': 'Tres de Febrero', 'p02189': 'Vicente López', 'p02196': 'Esteban Echeverría',
+            'p02203': 'Ezeiza', 'p02210': 'Florencio Varela', 'p02217': 'Hurlingham',
+            'p02224': 'Ituzaingó', 'p02231': 'José C. Paz', 'p02002': 'Comuna 1 (CABA)',
+            'p02000': 'Ciudad Autónoma de Buenos Aires (CABA)'
+        };
+
         // Variables de Zoom para PC
         let scale = 1;
         let pointX = 0;
@@ -221,6 +238,20 @@
             }
         }
 
+        function obtenerNombreLimpio(path) {
+            let nombre = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
+            nombre = nombre.trim();
+
+            // Si coincide con un código INDEC de Buenos Aires / CABA, se traduce al nombre real
+            const codigoMinuscula = nombre.toLowerCase();
+            if (codigosIndecAMBA[codigoMinuscula]) {
+                return codigosIndecAMBA[codigoMinuscula];
+            }
+
+            // Limpieza general de guiones o códigos raros
+            return nombre.replace(/_/g, ' ').replace(/^p\d+/i, '').trim() || 'Desconocido';
+        }
+
         function inicializarInteracciones() {
             const container = document.getElementById('map-container');
             const svg = container.querySelector('svg');
@@ -236,14 +267,14 @@
 
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
-                const nombre = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id');
+                const nombre = obtenerNombreLimpio(path);
                 if (!nombre) return;
 
                 const mostrarTooltip = (e) => {
                     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-                    tooltip.textContent = nombre.replace(/_/g, ' ');
+                    tooltip.textContent = nombre;
                     tooltip.style.display = 'block';
                     tooltip.style.left = `${clientX}px`;
                     tooltip.style.top = `${clientY - 15}px`;
