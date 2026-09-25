@@ -31,6 +31,7 @@
             gap: 4px;
             border: 1px solid #dbdbdb;
             margin-bottom: 20px;
+            z-index: 10;
         }
 
         .btn {
@@ -64,6 +65,8 @@
             align-items: center;
             min-height: 500px;
             position: relative;
+            overflow: hidden;
+            touch-action: none;
         }
 
         #map-container svg {
@@ -71,6 +74,12 @@
             height: auto;
             max-height: 85vh;
             display: block;
+            transform-origin: 0 0;
+            cursor: grab;
+        }
+
+        #map-container svg:active {
+            cursor: grabbing;
         }
 
         /* Forzar texto blanco */
@@ -149,6 +158,14 @@
             '#00703F': '#7f1d1d'
         };
 
+        // Variables globales para Zoom y Drag en PC
+        let scale = 1;
+        let pointX = 0;
+        let pointY = 0;
+        let startX = 0;
+        let startY = 0;
+        let isDragging = false;
+
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
             const btnBolivia = document.getElementById('btn-bolivia');
@@ -186,24 +203,40 @@
                 });
 
                 container.innerHTML = svgCode;
-                inicializarTooltip();
+                inicializarInteracciones();
             } catch (error) {
                 container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
                 console.error(error);
             }
         }
 
-        function inicializarTooltip() {
+        function deseleccionarTodo() {
+            const container = document.getElementById('map-container');
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+
+            if (container) {
+                const paths = container.querySelectorAll('path.selected');
+                paths.forEach(p => p.classList.remove('selected'));
+            }
+        }
+
+        function inicializarInteracciones() {
             const container = document.getElementById('map-container');
             const svg = container.querySelector('svg');
             const tooltip = document.getElementById('tooltip');
 
             if (!svg) return;
 
+            // Reiniciar zoom y posición
+            scale = 1;
+            pointX = 0;
+            pointY = 0;
+            svg.style.transform = `translate(0px, 0px) scale(1)`;
+
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
                 const nombre = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id');
-                
                 if (!nombre) return;
 
                 const mostrarTooltip = (e) => {
@@ -216,26 +249,80 @@
                     tooltip.style.top = `${clientY - 15}px`;
                 };
 
-                path.addEventListener('mousemove', mostrarTooltip);
+                path.addEventListener('mousemove', (e) => {
+                    if (!isDragging) mostrarTooltip(e);
+                });
+
                 path.addEventListener('touchstart', (e) => {
-                    mostrarTooltip(e);
+                    e.stopPropagation();
                     paths.forEach(p => p.classList.remove('selected'));
                     path.classList.add('selected');
+                    mostrarTooltip(e);
                 }, { passive: true });
-            });
 
-            // Ocultar tooltip al tocar o mover fuera
-            document.addEventListener('touchstart', (e) => {
-                if (!e.target.closest('#map-container')) {
-                    tooltip.style.display = 'none';
+                path.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     paths.forEach(p => p.classList.remove('selected'));
-                }
-            }, { passive: true });
-
-            container.addEventListener('mouseleave', () => {
-                tooltip.style.display = 'none';
+                    path.classList.add('selected');
+                    mostrarTooltip(e);
+                });
             });
+
+            // Zoom con la Rueda del Mouse (PC)
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = container.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const delta = -e.deltaY;
+                const factor = delta > 0 ? 1.15 : 0.85;
+                const newScale = Math.min(Math.max(1, scale * factor), 8);
+
+                if (newScale !== scale) {
+                    pointX = mouseX - (mouseX - pointX) * (newScale / scale);
+                    pointY = mouseY - (mouseY - pointY) * (newScale / scale);
+                    scale = newScale;
+
+                    if (scale === 1) {
+                        pointX = 0;
+                        pointY = 0;
+                    }
+
+                    svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+                }
+            }, { passive: false });
+
+            // Arrastrar mapa con el mouse (PC)
+            container.addEventListener('mousedown', (e) => {
+                if (scale > 1) {
+                    isDragging = true;
+                    startX = e.clientX - pointX;
+                    startY = e.clientY - pointY;
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                pointX = e.clientX - startX;
+                pointY = e.clientY - startY;
+                svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            container.addEventListener('mouseleave', deseleccionarTodo);
         }
+
+        // Deseleccionar al tocar/cliquear en el fondo blanco o fuera del mapa
+        document.addEventListener('click', deseleccionarTodo);
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('path')) {
+                deseleccionarTodo();
+            }
+        }, { passive: true });
 
         cargarMapa('bolivia');
     </script>
