@@ -142,9 +142,15 @@
     <div id="tooltip" class="map-tooltip"></div>
 
     <script>
+        // Mapas
         const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
         const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
+
+        // Banderas (Asegúrate de que tus archivos de bandera tengan estos nombres o cámbialos aquí)
+        const BANDERA_PARAGUAY = './bandera_paraguay.svg';
+        const BANDERA_BOLIVIA = './bandera_bolivia.svg';
+        const BANDERA_PERU = './bandera_peru.svg';
 
         const tablaColores = {
             '#FFFFE5': '#ffffff',
@@ -221,16 +227,20 @@
             btnPeru.classList.remove('active');
 
             let url = URL_PARAGUAY;
+            let urlBandera = BANDERA_PARAGUAY;
 
             if (pais === 'paraguay') {
                 btnParaguay.classList.add('active');
                 url = URL_PARAGUAY;
+                urlBandera = BANDERA_PARAGUAY;
             } else if (pais === 'bolivia') {
                 btnBolivia.classList.add('active');
                 url = URL_BOLIVIA;
+                urlBandera = BANDERA_BOLIVIA;
             } else if (pais === 'peru') {
                 btnPeru.classList.add('active');
                 url = URL_PERU;
+                urlBandera = BANDERA_PERU;
             }
 
             deseleccionarTodo();
@@ -252,6 +262,10 @@
                     const svg = container.querySelector('svg');
                     if (svg) {
                         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        
+                        // Incrustar la bandera justo arriba del texto "2026"
+                        incrustarBandera(svg, urlBandera);
+
                         resetearZoom(svg);
                         configurarPaths(svg);
                     }
@@ -265,6 +279,38 @@
             } catch (error) {
                 container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
                 console.error(error);
+            }
+        }
+
+        function incrustarBandera(svg, urlBandera) {
+            if (!svg) return;
+
+            const elementosTexto = Array.from(svg.querySelectorAll('text, tspan'));
+            const nodo2026 = elementosTexto.find(el => el.textContent.trim() === '2026');
+
+            if (nodo2026) {
+                const target = nodo2026.tagName.toLowerCase() === 'tspan' ? nodo2026.parentElement : nodo2026;
+                
+                const xText = parseFloat(target.getAttribute('x')) || 0;
+                const yText = parseFloat(target.getAttribute('y')) || 0;
+
+                // Tamaño en proporción 3:2
+                const ancho = 120;
+                const alto = 80;
+
+                // Centrado dinámico respecto al texto
+                const xPos = xText - (ancho / 2);
+                const yPos = yText - alto - 20; 
+
+                const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlBandera);
+                img.setAttribute('x', xPos);
+                img.setAttribute('y', yPos);
+                img.setAttribute('width', ancho);
+                img.setAttribute('height', alto);
+                img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+                svg.appendChild(img);
             }
         }
 
@@ -355,7 +401,6 @@
         }
 
         function configurarEventosGlobales(container) {
-            // Zoom con rueda de mouse (PC)
             container.addEventListener('wheel', (e) => {
                 const svg = container.querySelector('svg');
                 if (!svg) return;
@@ -383,7 +428,6 @@
                 }
             }, { passive: false });
 
-            // Arrastrar con mouse (PC)
             container.addEventListener('mousedown', (e) => {
                 if (scale > 1) {
                     isDragging = true;
@@ -404,7 +448,6 @@
                 isDragging = false;
             });
 
-            // GESTOS TÁCTILES (Celular)
             container.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     isDragging = true;
@@ -472,7 +515,7 @@
             }
         }, { passive: true });
 
-        // Carga inicial por defecto: Paraguayos
+        // Carga inicial: Paraguayos
         cargarMapa('paraguay');
     </script>
 </body>
