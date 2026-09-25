@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PLAN PATRIA GRANDE</title>
     <style>
         * {
@@ -19,7 +19,8 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 24px 16px;
+            padding: 16px 8px;
+            overflow: hidden; /* Evita que rebote toda la página al arrastrar en celular */
         }
 
         /* Botones de navegación */
@@ -30,7 +31,7 @@
             display: inline-flex;
             gap: 4px;
             border: 1px solid #dbdbdb;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             z-index: 10;
         }
 
@@ -38,8 +39,8 @@
             background: transparent;
             border: none;
             color: #9ca3af;
-            padding: 10px 24px;
-            font-size: 15px;
+            padding: 8px 16px;
+            font-size: 14px;
             font-weight: 600;
             border-radius: 8px;
             cursor: pointer;
@@ -59,20 +60,19 @@
         /* Contenedor del mapa */
         #map-container {
             width: 100%;
+            height: calc(100vh - 80px);
             max-width: 900px;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 500px;
             position: relative;
             overflow: hidden;
-            touch-action: manipulation;
+            touch-action: none; /* Control de gestos personalizado */
         }
 
         #map-container svg {
             width: 100%;
-            height: auto;
-            max-height: 85vh;
+            height: 100%;
             display: block;
             transform-origin: 0 0;
             cursor: grab;
@@ -197,12 +197,17 @@
             'p02128': 'Presidente Perón'
         };
 
+        // Variables de Zoom y Transformación
         let scale = 1;
         let pointX = 0;
         let pointY = 0;
         let startX = 0;
         let startY = 0;
         let isDragging = false;
+        let initialPinchDist = 0;
+        let initialScale = 1;
+
+        const MAX_ZOOM = 120; // Zoom masivo para ver CABA al detalle en pantallas pequeñas
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
@@ -270,17 +275,34 @@
             return rawName.replace(/_/g, ' ').trim();
         }
 
-        // Calcula un grosor visible con límite mínimo y asegura color contrastante
         function actualizarGrosorBordes(svg) {
-            // Se calcula para mantener visibilidad constante sin desaparecer
-            const calculatedStroke = 0.2 / scale;
-            const finalStrokeWidth = Math.max(calculatedStroke, 0.05);
+            const calculatedStroke = 0.5 / scale;
+            const finalStrokeWidth = Math.max(calculatedStroke, 0.1);
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
-                path.style.setProperty('stroke', '#101010', 'important'); // Gris neutro bien definido
+                path.style.setProperty('stroke', '#4b5563', 'important');
                 path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
             });
+        }
+
+        function aplicarTransformacion(svg) {
+            svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            actualizarGrosorBordes(svg);
+        }
+
+        function getDistance(touches) {
+            return Math.hypot(
+                touches[0].clientX - touches[1].clientX,
+                touches[0].clientY - touches[1].clientY
+            );
+        }
+
+        function getMidpoint(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
         }
 
         function inicializarInteracciones() {
@@ -293,9 +315,7 @@
             scale = 1;
             pointX = 0;
             pointY = 0;
-            svg.style.transform = `translate(0px, 0px) scale(1)`;
-            
-            actualizarGrosorBordes(svg);
+            aplicarTransformacion(svg);
 
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
@@ -312,18 +332,6 @@
                     tooltip.style.top = `${clientY - 15}px`;
                 };
 
-                path.addEventListener('mousemove', (e) => {
-                    if (!isDragging) mostrarTooltip(e);
-                });
-
-                path.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 1) {
-                        paths.forEach(p => p.classList.remove('selected'));
-                        path.classList.add('selected');
-                        mostrarTooltip(e);
-                    }
-                }, { passive: true });
-
                 path.addEventListener('click', (e) => {
                     e.stopPropagation();
                     paths.forEach(p => p.classList.remove('selected'));
@@ -332,7 +340,7 @@
                 });
             });
 
-            // Zoom con recálculo de stroke mínimo
+            // Zoom con rueda de mouse (PC)
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const rect = container.getBoundingClientRect();
@@ -340,8 +348,8 @@
                 const mouseY = e.clientY - rect.top;
 
                 const delta = -e.deltaY;
-                const factor = delta > 0 ? 1.2 : 0.8;
-                const newScale = Math.min(Math.max(1, scale * factor), 50);
+                const factor = delta > 0 ? 1.25 : 0.8;
+                const newScale = Math.min(Math.max(1, scale * factor), MAX_ZOOM);
 
                 if (newScale !== scale) {
                     pointX = mouseX - (mouseX - pointX) * (newScale / scale);
@@ -353,12 +361,11 @@
                         pointY = 0;
                     }
 
-                    svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-                    actualizarGrosorBordes(svg);
+                    aplicarTransformacion(svg);
                 }
             }, { passive: false });
 
-            // Arrastrar mapa
+            // Arrastrar con mouse (PC)
             container.addEventListener('mousedown', (e) => {
                 if (scale > 1) {
                     isDragging = true;
@@ -371,11 +378,66 @@
                 if (!isDragging) return;
                 pointX = e.clientX - startX;
                 pointY = e.clientY - startY;
-                svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+                aplicarTransformacion(svg);
             });
 
             window.addEventListener('mouseup', () => {
                 isDragging = false;
+            });
+
+            // GESTOS TÁCTILES (Celular: Pinch Zoom y Drag)
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - pointX;
+                    startY = e.touches[0].clientY - pointY;
+                } else if (e.touches.length === 2) {
+                    isDragging = false;
+                    initialPinchDist = getDistance(e.touches);
+                    initialScale = scale;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isDragging && scale > 1) {
+                    pointX = e.touches[0].clientX - startX;
+                    pointY = e.touches[0].clientY - startY;
+                    aplicarTransformacion(svg);
+                } else if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const dist = getDistance(e.touches);
+                    if (initialPinchDist === 0) return;
+
+                    const factor = dist / initialPinchDist;
+                    const newScale = Math.min(Math.max(1, initialScale * factor), MAX_ZOOM);
+
+                    if (newScale !== scale) {
+                        const rect = container.getBoundingClientRect();
+                        const mid = getMidpoint(e.touches);
+                        const mouseX = mid.x - rect.left;
+                        const mouseY = mid.y - rect.top;
+
+                        pointX = mouseX - (mouseX - pointX) * (newScale / scale);
+                        pointY = mouseY - (mouseY - pointY) * (newScale / scale);
+                        scale = newScale;
+
+                        if (scale === 1) {
+                            pointX = 0;
+                            pointY = 0;
+                        }
+
+                        aplicarTransformacion(svg);
+                    }
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    initialPinchDist = 0;
+                }
+                if (e.touches.length === 0) {
+                    isDragging = false;
+                }
             });
 
             container.addEventListener('mouseleave', deseleccionarTodo);
@@ -383,7 +445,7 @@
 
         document.addEventListener('click', deseleccionarTodo);
         document.addEventListener('touchstart', (e) => {
-            if (!e.target.closest('path')) {
+            if (!e.target.closest('path') && !e.target.closest('#map-container')) {
                 deseleccionarTodo();
             }
         }, { passive: true });
