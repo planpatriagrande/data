@@ -115,43 +115,56 @@
     </div>
 
     <script>
-    const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
-    const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
+        const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
+        const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
 
-    async function cargarMapa(pais) {
-        const container = document.getElementById('map-container');
-        const btnBolivia = document.getElementById('btn-bolivia');
-        const btnParaguay = document.getElementById('btn-paraguay');
+        // Reemplazo directo de los valores HEX estándar de la escala de verdes por rojos puros/cálidos
+        const tablaColores = {
+            '#edf8e9': '#fca5a5', // Rojo claro cálido
+            '#c7e9c0': '#f87171', // Rojo medio claro
+            '#a1d99b': '#ef4444', // Rojo medio
+            '#74c476': '#dc2626', // Rojo
+            '#31a354': '#b91c1c', // Rojo oscuro
+            '#006d2c': '#7f1d1d'  // Rojo muy oscuro
+        };
 
-        if (pais === 'bolivia') {
-            btnBolivia.classList.add('active');
-            btnParaguay.classList.remove('active');
-        } else {
-            btnParaguay.classList.add('active');
-            btnBolivia.classList.remove('active');
+        async function cargarMapa(pais) {
+            const container = document.getElementById('map-container');
+            const btnBolivia = document.getElementById('btn-bolivia');
+            const btnParaguay = document.getElementById('btn-paraguay');
+
+            if (pais === 'bolivia') {
+                btnBolivia.classList.add('active');
+                btnParaguay.classList.remove('active');
+            } else {
+                btnParaguay.classList.add('active');
+                btnBolivia.classList.remove('active');
+            }
+
+            const url = (pais === 'bolivia') ? URL_BOLIVIA : URL_PARAGUAY;
+
+            container.innerHTML = `<div class="loading">Cargando mapa...</div>`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Error al cargar el SVG');
+                let svgCode = await response.text();
+
+                // Aplicar sustitución directa de colores en el texto del SVG
+                Object.keys(tablaColores).forEach(verde => {
+                    const rojo = tablaColores[verde];
+                    const regex = new RegExp(verde, 'gi');
+                    svgCode = svgCode.replace(regex, rojo);
+                });
+
+                container.innerHTML = svgCode;
+            } catch (error) {
+                container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
+                console.error(error);
+            }
         }
 
-        const url = (pais === 'bolivia') ? URL_BOLIVIA : URL_PARAGUAY;
-
-        container.innerHTML = `<div class="loading">Cargando mapa...</div>`;
-
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Error al cargar el SVG');
-            let svgCode = await response.text();
-
-            // Filtro omoambuéva sa'y verde ha omoĩ rojo pytã iporãva, rosado'ỹre
-            const filtroRojo = 'filter: sepia(100%) saturate(1000%) hue-rotate(300deg) brightness(0.8);';
-            svgCode = svgCode.replace('<svg', `<svg style="${filtroRojo}"`);
-
-            container.innerHTML = svgCode;
-        } catch (error) {
-            container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
-            console.error(error);
-        }
-    }
-
-    cargarMapa('bolivia');
-</script>
+        cargarMapa('bolivia');
+    </script>
 </body>
 </html>
