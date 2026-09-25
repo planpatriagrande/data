@@ -77,6 +77,8 @@
             transform-origin: 0 0;
             cursor: grab;
             will-change: opacity, transform;
+            shape-rendering: geometricPrecision;
+            text-rendering: geometricPrecision;
         }
 
         #map-container svg:active {
@@ -263,7 +265,7 @@
                 if (nuevoSvg) {
                     nuevoSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     
-                    await incrustarBanderaAlCentro(nuevoSvg, urlBandera);
+                    await incrustarBanderaVectorial(nuevoSvg, urlBandera);
 
                     resetearZoom(nuevoSvg);
                     configurarPaths(nuevoSvg);
@@ -286,7 +288,7 @@
 
                         animEntrada.onfinish = () => {
                             nuevoSvg.style.opacity = '1';
-                            animEntrada.cancel(); // Libera las propiedades de estilo para mantener la interactividad
+                            animEntrada.cancel();
                         };
                     };
 
@@ -316,13 +318,12 @@
             }
         }
 
-        async function incrustarBanderaAlCentro(svg, urlBandera) {
+        async function incrustarBanderaVectorial(svg, urlBandera) {
             if (!svg) return;
 
             const ESCALA_PORCENTAJE = 20;
             const X_OFFSET = 55;
             const Y_OFFSET = -70;
-            const ESCALA_RESOLUCION = 0.5;
 
             let vbX = 0, vbY = 0, vbWidth = 1000, vbHeight = 1000;
 
@@ -343,11 +344,10 @@
             const xCentro = vbX + (vbWidth / 2) - (anchoBandera / 2) + X_OFFSET;
             const yCentro = vbY + (vbHeight / 2) + Y_OFFSET;
 
-            const urlOptimizada = await obtenerBanderaBajaResolucion(urlBandera, ESCALA_RESOLUCION);
-
+            // Cargar directamente la imagen vectorial en la etiqueta <image> para mantener 100% nitidez SVG
             const img = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'image');
-            img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlOptimizada);
-            img.setAttribute('href', urlOptimizada);
+            img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlBandera);
+            img.setAttribute('href', urlBandera);
             img.setAttribute('x', xCentro);
             img.setAttribute('y', yCentro);
             img.setAttribute('width', anchoBandera);
@@ -356,25 +356,6 @@
             img.style.pointerEvents = 'none';
 
             svg.appendChild(img);
-        }
-
-        function obtenerBanderaBajaResolucion(urlSvg, factorResolucion = 0.5) {
-            return new Promise((resolve) => {
-                const imgTemp = new Image();
-                imgTemp.crossOrigin = 'Anonymous';
-                imgTemp.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    canvas.width = Math.round((imgTemp.width || 400) * factorResolucion);
-                    canvas.height = Math.round((imgTemp.height || 300) * factorResolucion);
-
-                    ctx.drawImage(imgTemp, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL('image/png'));
-                };
-                imgTemp.onerror = () => resolve(urlSvg);
-                imgTemp.src = urlSvg;
-            });
         }
 
         function resetearZoom(svg) {
