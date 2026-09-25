@@ -76,10 +76,21 @@
             display: block;
             transform-origin: 0 0;
             cursor: grab;
+            /* Optimizaciones de aceleración por GPU para rendimiento en arrastre */
+            will-change: transform;
+            shape-rendering: optimizeSpeed;
         }
 
         #map-container svg:active {
             cursor: grabbing;
+        }
+
+        /* Estilo optimizado para banderas incrustadas */
+        .flag-embedded {
+            pointer-events: none;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            will-change: transform;
         }
 
         /* Forzar texto blanco */
@@ -92,7 +103,7 @@
         #map-container svg path {
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: fill 0.2s ease;
+            vector-effect: non-scaling-stroke; /* Evita recalcular trazos pesados en cada zoom */
         }
 
         #map-container svg path:hover,
@@ -212,6 +223,7 @@
         let initialPinchDist = 0;
         let initialScale = 1;
         let listenersAsignados = false;
+        let ticking = false;
 
         const MAX_ZOOM = 120;
 
@@ -283,13 +295,9 @@
         function incrustarBanderaAlCentro(svg, urlBandera) {
             if (!svg) return;
 
-            // =========================================================
-            // PARAMETROS DE AJUSTE MANUAL
-            // =========================================================
-            const ESCALA_PORCENTAJE = 20;  // Tamaño relativo respecto al ancho del mapa (8%)
-            const X_OFFSET = 55;          // Desplazamiento X (+ derecha, - izquierda)
-            const Y_OFFSET = -70;         // Desplazamiento Y (+ abajo, - arriba)
-            // =========================================================
+            const ESCALA_PORCENTAJE = 20;
+            const X_OFFSET = 55;
+            const Y_OFFSET = -70;
 
             let vbX = 0, vbY = 0, vbWidth = 1000, vbHeight = 1000;
 
@@ -318,7 +326,8 @@
             img.setAttribute('width', anchoBandera);
             img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
             
-            img.style.pointerEvents = 'none';
+            // Clase optimizada para acelerar el render
+            img.setAttribute('class', 'flag-embedded');
 
             svg.appendChild(img);
         }
@@ -327,7 +336,7 @@
             scale = 1;
             pointX = 0;
             pointY = 0;
-            aplicarTransformacion(svg);
+            solicitarTransformacion(svg);
         }
 
         function deseleccionarTodo() {
@@ -352,20 +361,16 @@
             return rawName.replace(/_/g, ' ').trim();
         }
 
-        function actualizarGrosorBordes(svg) {
-            const calculatedStroke = 0.1 / scale;
-            const finalStrokeWidth = Math.max(calculatedStroke, 0.05);
-            
-            const paths = svg.querySelectorAll('path');
-            paths.forEach(path => {
-                path.style.setProperty('stroke', '#101010', 'important');
-                path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
-            });
+        function aplicarTransformacion(svg) {
+            svg.style.transform = `translate3d(${pointX}px, ${pointY}px, 0px) scale(${scale})`;
+            ticking = false;
         }
 
-        function aplicarTransformacion(svg) {
-            svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-            actualizarGrosorBordes(svg);
+        function solicitarTransformacion(svg) {
+            if (!ticking) {
+                requestAnimationFrame(() => aplicarTransformacion(svg));
+                ticking = true;
+            }
         }
 
         function getDistance(touches) {
@@ -433,7 +438,7 @@
                         pointY = 0;
                     }
 
-                    aplicarTransformacion(svg);
+                    solicitarTransformacion(svg);
                 }
             }, { passive: false });
 
@@ -450,7 +455,7 @@
                 if (!isDragging || !svg) return;
                 pointX = e.clientX - startX;
                 pointY = e.clientY - startY;
-                aplicarTransformacion(svg);
+                solicitarTransformacion(svg);
             });
 
             window.addEventListener('mouseup', () => {
@@ -476,7 +481,7 @@
                 if (e.touches.length === 1 && isDragging && scale > 1) {
                     pointX = e.touches[0].clientX - startX;
                     pointY = e.touches[0].clientY - startY;
-                    aplicarTransformacion(svg);
+                    solicitarTransformacion(svg);
                 } else if (e.touches.length === 2) {
                     e.preventDefault();
                     const dist = getDistance(e.touches);
@@ -500,7 +505,7 @@
                             pointY = 0;
                         }
 
-                        aplicarTransformacion(svg);
+                        solicitarTransformacion(svg);
                     }
                 }
             }, { passive: false });
