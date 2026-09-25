@@ -74,7 +74,7 @@
             width: 100%;
             height: 100%;
             display: block;
-            transform-origin: 0 0; /* Necesario para que el zoom vaya exacto al cursor/dedo */
+            transform-origin: 0 0;
             cursor: grab;
         }
 
@@ -129,8 +129,8 @@
 <body>
 
     <div class="button-group">
-        <button class="btn" id="btn-bolivia" onclick="cargarMapa('bolivia')">Bolivianos</button>
         <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguayos</button>
+        <button class="btn" id="btn-bolivia" onclick="cargarMapa('bolivia')">Bolivianos</button>
         <button class="btn" id="btn-peru" onclick="cargarMapa('peru')">Peruanos</button>
     </div>
 
@@ -142,8 +142,8 @@
     <div id="tooltip" class="map-tooltip"></div>
 
     <script>
-        const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
+        const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
         const tablaColores = {
@@ -212,22 +212,22 @@
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
-            const btnBolivia = document.getElementById('btn-bolivia');
             const btnParaguay = document.getElementById('btn-paraguay');
+            const btnBolivia = document.getElementById('btn-bolivia');
             const btnPeru = document.getElementById('btn-peru');
 
-            btnBolivia.classList.remove('active');
             btnParaguay.classList.remove('active');
+            btnBolivia.classList.remove('active');
             btnPeru.classList.remove('active');
 
-            let url = URL_BOLIVIA;
+            let url = URL_PARAGUAY;
 
-            if (pais === 'bolivia') {
-                btnBolivia.classList.add('active');
-                url = URL_BOLIVIA;
-            } else if (pais === 'paraguay') {
+            if (pais === 'paraguay') {
                 btnParaguay.classList.add('active');
                 url = URL_PARAGUAY;
+            } else if (pais === 'bolivia') {
+                btnBolivia.classList.add('active');
+                url = URL_BOLIVIA;
             } else if (pais === 'peru') {
                 btnPeru.classList.add('active');
                 url = URL_PERU;
@@ -251,7 +251,6 @@
                     
                     const svg = container.querySelector('svg');
                     if (svg) {
-                        // Asegurar que el SVG mantenga proporciones y se centre de forma nativa
                         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         resetearZoom(svg);
                         configurarPaths(svg);
@@ -405,7 +404,7 @@
                 isDragging = false;
             });
 
-            // GESTOS TÁCTILES (Celular: Pinch Zoom y Drag)
+            // GESTOS TÁCTILES (Celular)
             container.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     isDragging = true;
@@ -473,8 +472,8 @@
             }
         }, { passive: true });
 
-        // Carga inicial
-        cargarMapa('bolivia');
+        // Carga inicial por defecto: Paraguayos
+        cargarMapa('paraguay');
     </script>
 </body>
 </html>
