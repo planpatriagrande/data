@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <title>PLAN PATRIA GRANDE</title>
     <style>
         * {
@@ -20,6 +20,7 @@
             align-items: center;
             min-height: 100vh;
             padding: 24px 16px;
+            overflow-x: hidden;
         }
 
         /* Botones de navegación */
@@ -31,6 +32,7 @@
             gap: 4px;
             border: 1px solid #dbdbdb;
             margin-bottom: 20px;
+            z-index: 10;
         }
 
         .btn {
@@ -47,7 +49,7 @@
         }
 
         .btn.active {
-            background: #b91c1c; /* Rojo plano sin sombra */
+            background: #b91c1c;
             color: #ffffff;
         }
 
@@ -63,6 +65,9 @@
             justify-content: center;
             align-items: center;
             min-height: 500px;
+            overflow: hidden;
+            position: relative;
+            touch-action: manipulation;
         }
 
         #map-container svg {
@@ -70,6 +75,8 @@
             height: auto;
             max-height: 85vh;
             display: block;
+            transition: transform 0.3s ease-out;
+            transform-origin: center center;
         }
 
         /* Forzar texto blanco */
@@ -87,10 +94,29 @@
             transition: fill 0.2s ease, stroke-width 0.2s ease;
         }
 
-        #map-container svg path:hover {
+        #map-container svg path:hover,
+        #map-container svg path.selected {
             stroke: #ffffff !important;
             stroke-width: 1px !important;
             cursor: pointer;
+        }
+
+        /* Tooltip Flotante para celular y PC */
+        .map-tooltip {
+            position: fixed;
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid #dc2626;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transform: translate(-50%, -120%);
+            white-space: nowrap;
         }
 
         .loading {
@@ -112,20 +138,25 @@
         <div class="loading">Cargando mapa...</div>
     </div>
 
+    <!-- Elemento Tooltip -->
+    <div id="tooltip" class="map-tooltip"></div>
+
     <script>
         const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
         const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
-        // Reemplazo de escala de verdes por rojos
         const tablaColores = {
-            '#FFFFE5': '#ffffff', // Blanco
-            '#F5FCAB': '#f87171', // Rojo medio claro
-            '#B8E599': '#ef4444', // Rojo medio
-            '#78C679': '#dc2626', // Rojo
-            '#2DAE58': '#b91c1c', // Rojo oscuro
-            '#00703F': '#7f1d1d'  // Rojo muy oscuro
+            '#FFFFE5': '#ffffff',
+            '#F5FCAB': '#f87171',
+            '#B8E599': '#ef4444',
+            '#78C679': '#dc2626',
+            '#2DAE58': '#b91c1c',
+            '#00703F': '#7f1d1d'
         };
+
+        let isZoomed = false;
+        let lastTap = 0;
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
@@ -133,14 +164,12 @@
             const btnParaguay = document.getElementById('btn-paraguay');
             const btnPeru = document.getElementById('btn-peru');
 
-            // Desactivar todos los botones
             btnBolivia.classList.remove('active');
             btnParaguay.classList.remove('active');
             btnPeru.classList.remove('active');
 
             let url = URL_BOLIVIA;
 
-            // Activar el botón seleccionado y asignar la URL correspondiente
             if (pais === 'bolivia') {
                 btnBolivia.classList.add('active');
                 url = URL_BOLIVIA;
@@ -166,10 +195,85 @@
                 });
 
                 container.innerHTML = svgCode;
+                inicializarInteracciones();
             } catch (error) {
                 container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
                 console.error(error);
             }
+        }
+
+        function inicializarInteracciones() {
+            const container = document.getElementById('map-container');
+            const svg = container.querySelector('svg');
+            const tooltip = document.getElementById('tooltip');
+
+            if (!svg) return;
+
+            // Reset Zoom
+            isZoomed = false;
+            svg.style.transform = 'scale(1)';
+
+            // Eventos de Tooltip al tocar/pasar mouse sobre regiones
+            const paths = svg.querySelectorAll('path');
+            paths.forEach(path => {
+                const nombre = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id');
+                
+                if (!nombre) return;
+
+                const mostrarTooltip = (e) => {
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                    tooltip.textContent = nombre.replace(/_/g, ' ');
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = `${clientX}px`;
+                    tooltip.style.top = `${clientY - 15}px`;
+                };
+
+                path.addEventListener('mousemove', mostrarTooltip);
+                path.addEventListener('touchstart', (e) => {
+                    mostrarTooltip(e);
+                    paths.forEach(p => p.classList.remove('selected'));
+                    path.classList.add('selected');
+                }, { passive: true });
+            });
+
+            // Ocultar Tooltip al tocar fuera
+            document.addEventListener('touchstart', (e) => {
+                if (!e.target.closest('#map-container')) {
+                    tooltip.style.display = 'none';
+                    paths.forEach(p => p.classList.remove('selected'));
+                }
+            }, { passive: true });
+
+            container.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none';
+            });
+
+            // Doble Tap para Zoom en Celular
+            container.addEventListener('touchend', (e) => {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                
+                if (tapLength < 300 && tapLength > 0) {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    const rect = container.getBoundingClientRect();
+                    
+                    const x = ((touch.clientX - rect.left) / rect.width) * 100;
+                    const y = ((touch.clientY - rect.top) / rect.height) * 100;
+
+                    if (!isZoomed) {
+                        svg.style.transformOrigin = `${x}% ${y}%`;
+                        svg.style.transform = 'scale(2.5)';
+                        isZoomed = true;
+                    } else {
+                        svg.style.transform = 'scale(1)';
+                        isZoomed = false;
+                    }
+                }
+                lastTap = currentTime;
+            });
         }
 
         cargarMapa('bolivia');
