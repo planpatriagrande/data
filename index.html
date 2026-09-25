@@ -142,216 +142,302 @@
     <div id="tooltip" class="map-tooltip"></div>
 
     <script>
-        const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
-        const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
-        const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
+    const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
+    const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
+    const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
-        const tablaColores = {
-            '#FFFFE5': '#ffffff',
-            '#F5FCAB': '#f87171',
-            '#B8E599': '#ef4444',
-            '#78C679': '#dc2626',
-            '#2DAE58': '#b91c1c',
-            '#00703F': '#7f1d1d'
-        };
+    const tablaColores = {
+        '#FFFFE5': '#ffffff',
+        '#F5FCAB': '#f87171',
+        '#B8E599': '#ef4444',
+        '#78C679': '#dc2626',
+        '#2DAE58': '#b91c1c',
+        '#00703F': '#7f1d1d'
+    };
 
-        const codigosAMBA = {
-            'p02122': 'Vicente López',
-            'p02106': 'San Isidro',
-            'p02105': 'San Fernando',
-            'p02113': 'Tigre',
-            'p02035': 'Escobar',
-            'p02016': 'Campana',
-            'p02125': 'Zárate',
-            'p02037': 'Exaltación de la Cruz',
-            'p02071': 'Luján',
-            'p02051': 'General Rodríguez',
-            'p02089': 'Pilar',
-            'p02130': 'Malvinas Argentinas',
-            'p02129': 'José C. Paz',
-            'p02053': 'San Miguel',
-            'p02079': 'Moreno',
-            'p02052': 'General San Martín',
-            'p02118': 'Tres de Febrero',
-            'p02080': 'Morón',
-            'p02134': 'Hurlingham',
-            'p02133': 'Ituzaingó',
-            'p02077': 'Merlo',
-            'p02075': 'Marcos Paz',
-            'p02061': 'La Matanza',
-            'p02132': 'Ezeiza',
-            'p02045': 'General Las Heras',
-            'p02017': 'Cañuelas',
-            'p02109': 'San Vicente',
-            'p02063': 'La Plata',
-            'p02012': 'Berisso',
-            'p02034': 'Ensenada',
-            'p02011': 'Berazategui',
-            'p02092': 'Quilmes',
-            'p02004': 'Avellaneda',
-            'p02062': 'Lanús',
-            'p02070': 'Lomas de Zamora',
-            'p02036': 'Esteban Echeverría',
-            'p02003': 'Almirante Brown',
-            'p02038': 'Florencio Varela',
-            'p02128': 'Presidente Perón'
-        };
+    const codigosAMBA = {
+        'p02122': 'Vicente López',
+        'p02106': 'San Isidro',
+        'p02105': 'San Fernando',
+        'p02113': 'Tigre',
+        'p02035': 'Escobar',
+        'p02016': 'Campana',
+        'p02125': 'Zárate',
+        'p02037': 'Exaltación de la Cruz',
+        'p02071': 'Luján',
+        'p02051': 'General Rodríguez',
+        'p02089': 'Pilar',
+        'p02130': 'Malvinas Argentinas',
+        'p02129': 'José C. Paz',
+        'p02053': 'San Miguel',
+        'p02079': 'Moreno',
+        'p02052': 'General San Martín',
+        'p02118': 'Tres de Febrero',
+        'p02080': 'Morón',
+        'p02134': 'Hurlingham',
+        'p02133': 'Ituzaingó',
+        'p02077': 'Merlo',
+        'p02075': 'Marcos Paz',
+        'p02061': 'La Matanza',
+        'p02132': 'Ezeiza',
+        'p02045': 'General Las Heras',
+        'p02017': 'Cañuelas',
+        'p02109': 'San Vicente',
+        'p02063': 'La Plata',
+        'p02012': 'Berisso',
+        'p02034': 'Ensenada',
+        'p02011': 'Berazategui',
+        'p02092': 'Quilmes',
+        'p02004': 'Avellaneda',
+        'p02062': 'Lanús',
+        'p02070': 'Lomas de Zamora',
+        'p02036': 'Esteban Echeverría',
+        'p02003': 'Almirante Brown',
+        'p02038': 'Florencio Varela',
+        'p02128': 'Presidente Perón'
+    };
 
-        // Variables de Zoom y Transformación
-        let scale = 1;
-        let pointX = 0;
-        let pointY = 0;
-        let startX = 0;
-        let startY = 0;
-        let isDragging = false;
-        let initialPinchDist = 0;
-        let initialScale = 1;
+    // Variables de Zoom y Transformación
+    let scale = 1;
+    let pointX = 0;
+    let pointY = 0;
+    let startX = 0;
+    let startY = 0;
+    let isDragging = false;
+    let initialPinchDist = 0;
+    let initialScale = 1;
+    let listenersAsignados = false;
 
-        const MAX_ZOOM = 120; // Zoom masivo para ver CABA al detalle en pantallas pequeñas
+    const MAX_ZOOM = 120;
 
-        async function cargarMapa(pais) {
-            const container = document.getElementById('map-container');
-            const btnBolivia = document.getElementById('btn-bolivia');
-            const btnParaguay = document.getElementById('btn-paraguay');
-            const btnPeru = document.getElementById('btn-peru');
+    async function cargarMapa(pais) {
+        const container = document.getElementById('map-container');
+        const btnBolivia = document.getElementById('btn-bolivia');
+        const btnParaguay = document.getElementById('btn-paraguay');
+        const btnPeru = document.getElementById('btn-peru');
 
-            btnBolivia.classList.remove('active');
-            btnParaguay.classList.remove('active');
-            btnPeru.classList.remove('active');
+        btnBolivia.classList.remove('active');
+        btnParaguay.classList.remove('active');
+        btnPeru.classList.remove('active');
 
-            let url = URL_BOLIVIA;
+        let url = URL_BOLIVIA;
 
-            if (pais === 'bolivia') {
-                btnBolivia.classList.add('active');
-                url = URL_BOLIVIA;
-            } else if (pais === 'paraguay') {
-                btnParaguay.classList.add('active');
-                url = URL_PARAGUAY;
-            } else if (pais === 'peru') {
-                btnPeru.classList.add('active');
-                url = URL_PERU;
-            }
-
-            container.innerHTML = `<div class="loading">Cargando mapa...</div>`;
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Error al cargar el SVG');
-                let svgCode = await response.text();
-
-                Object.keys(tablaColores).forEach(verde => {
-                    const rojo = tablaColores[verde];
-                    const regex = new RegExp(verde, 'gi');
-                    svgCode = svgCode.replace(regex, rojo);
-                });
-
-                container.innerHTML = svgCode;
-                inicializarInteracciones();
-            } catch (error) {
-                container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
-                console.error(error);
-            }
+        if (pais === 'bolivia') {
+            btnBolivia.classList.add('active');
+            url = URL_BOLIVIA;
+        } else if (pais === 'paraguay') {
+            btnParaguay.classList.add('active');
+            url = URL_PARAGUAY;
+        } else if (pais === 'peru') {
+            btnPeru.classList.add('active');
+            url = URL_PERU;
         }
 
-        function deseleccionarTodo() {
-            const container = document.getElementById('map-container');
-            const tooltip = document.getElementById('tooltip');
-            tooltip.style.display = 'none';
+        // Limpiar Tooltip activo
+        deseleccionarTodo();
 
-            if (container) {
-                const paths = container.querySelectorAll('path.selected');
-                paths.forEach(p => p.classList.remove('selected'));
-            }
-        }
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Error al cargar el SVG');
+            let svgCode = await response.text();
 
-        function obtenerNombreCorrecto(path) {
-            const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
-            const key = rawName.trim().toLowerCase();
-
-            if (codigosAMBA[key]) {
-                return codigosAMBA[key];
-            }
-
-            return rawName.replace(/_/g, ' ').trim();
-        }
-
-        function actualizarGrosorBordes(svg) {
-            const calculatedStroke = 0.2 / scale;
-            const finalStrokeWidth = Math.max(calculatedStroke, 0.1);
-            
-            const paths = svg.querySelectorAll('path');
-            paths.forEach(path => {
-                path.style.setProperty('stroke', '#101010', 'important');
-                path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
+            Object.keys(tablaColores).forEach(verde => {
+                const rojo = tablaColores[verde];
+                const regex = new RegExp(verde, 'gi');
+                svgCode = svgCode.replace(regex, rojo);
             });
+
+            // Usamos requestAnimationFrame para no congelar el hilo principal del celular
+            requestAnimationFrame(() => {
+                container.innerHTML = svgCode;
+                
+                // Reseteamos valores de zoom
+                scale = 1;
+                pointX = 0;
+                pointY = 0;
+                
+                const svg = container.querySelector('svg');
+                if (svg) {
+                    aplicarTransformacion(svg);
+                    configurarPaths(svg);
+                }
+
+                if (!listenersAsignados) {
+                    configurarEventosGlobales(container);
+                    listenersAsignados = true;
+                }
+            });
+
+        } catch (error) {
+            container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
+            console.error(error);
+        }
+    }
+
+    function deseleccionarTodo() {
+        const container = document.getElementById('map-container');
+        const tooltip = document.getElementById('tooltip');
+        tooltip.style.display = 'none';
+
+        if (container) {
+            const paths = container.querySelectorAll('path.selected');
+            paths.forEach(p => p.classList.remove('selected'));
+        }
+    }
+
+    function obtenerNombreCorrecto(path) {
+        const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
+        const key = rawName.trim().toLowerCase();
+
+        if (codigosAMBA[key]) {
+            return codigosAMBA[key];
         }
 
-        function aplicarTransformacion(svg) {
-            svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-            actualizarGrosorBordes(svg);
-        }
+        return rawName.replace(/_/g, ' ').trim();
+    }
 
-        function getDistance(touches) {
-            return Math.hypot(
-                touches[0].clientX - touches[1].clientX,
-                touches[0].clientY - touches[1].clientY
-            );
-        }
+    function actualizarGrosorBordes(svg) {
+        const calculatedStroke = 0.2 / scale;
+        const finalStrokeWidth = Math.max(calculatedStroke, 0.1);
+        
+        const paths = svg.querySelectorAll('path');
+        paths.forEach(path => {
+            path.style.setProperty('stroke', '#101010', 'important');
+            path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
+        });
+    }
 
-        function getMidpoint(touches) {
-            return {
-                x: (touches[0].clientX + touches[1].clientX) / 2,
-                y: (touches[0].clientY + touches[1].clientY) / 2
+    function aplicarTransformacion(svg) {
+        svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        actualizarGrosorBordes(svg);
+    }
+
+    function getDistance(touches) {
+        return Math.hypot(
+            touches[0].clientX - touches[1].clientX,
+            touches[0].clientY - touches[1].clientY
+        );
+    }
+
+    function getMidpoint(touches) {
+        return {
+            x: (touches[0].clientX + touches[1].clientX) / 2,
+            y: (touches[0].clientY + touches[1].clientY) / 2
+        };
+    }
+
+    function configurarPaths(svg) {
+        const tooltip = document.getElementById('tooltip');
+        const paths = svg.querySelectorAll('path');
+        
+        paths.forEach(path => {
+            const nombre = obtenerNombreCorrecto(path);
+            if (!nombre) return;
+
+            const mostrarTooltip = (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                tooltip.textContent = nombre;
+                tooltip.style.display = 'block';
+                tooltip.style.left = `${clientX}px`;
+                tooltip.style.top = `${clientY - 15}px`;
             };
-        }
 
-        function inicializarInteracciones() {
-            const container = document.getElementById('map-container');
+            path.onclick = (e) => {
+                e.stopPropagation();
+                paths.forEach(p => p.classList.remove('selected'));
+                path.classList.add('selected');
+                mostrarTooltip(e);
+            };
+        });
+    }
+
+    function configurarEventosGlobales(container) {
+        // Zoom con rueda de mouse (PC)
+        container.addEventListener('wheel', (e) => {
             const svg = container.querySelector('svg');
-            const tooltip = document.getElementById('tooltip');
-
             if (!svg) return;
 
-            scale = 1;
-            pointX = 0;
-            pointY = 0;
+            e.preventDefault();
+            const rect = container.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const delta = -e.deltaY;
+            const factor = delta > 0 ? 1.25 : 0.8;
+            const newScale = Math.min(Math.max(1, scale * factor), MAX_ZOOM);
+
+            if (newScale !== scale) {
+                pointX = mouseX - (mouseX - pointX) * (newScale / scale);
+                pointY = mouseY - (mouseY - pointY) * (newScale / scale);
+                scale = newScale;
+
+                if (scale === 1) {
+                    pointX = 0;
+                    pointY = 0;
+                }
+
+                aplicarTransformacion(svg);
+            }
+        }, { passive: false });
+
+        // Arrastrar con mouse (PC)
+        container.addEventListener('mousedown', (e) => {
+            if (scale > 1) {
+                isDragging = true;
+                startX = e.clientX - pointX;
+                startY = e.clientY - pointY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            const svg = container.querySelector('svg');
+            if (!isDragging || !svg) return;
+            pointX = e.clientX - startX;
+            pointY = e.clientY - startY;
             aplicarTransformacion(svg);
+        });
 
-            const paths = svg.querySelectorAll('path');
-            paths.forEach(path => {
-                const nombre = obtenerNombreCorrecto(path);
-                if (!nombre) return;
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
 
-                const mostrarTooltip = (e) => {
-                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        // GESTOS TÁCTILES (Celular: Pinch Zoom y Drag)
+        container.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - pointX;
+                startY = e.touches[0].clientY - pointY;
+            } else if (e.touches.length === 2) {
+                isDragging = false;
+                initialPinchDist = getDistance(e.touches);
+                initialScale = scale;
+            }
+        }, { passive: true });
 
-                    tooltip.textContent = nombre;
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = `${clientX}px`;
-                    tooltip.style.top = `${clientY - 15}px`;
-                };
+        container.addEventListener('touchmove', (e) => {
+            const svg = container.querySelector('svg');
+            if (!svg) return;
 
-                path.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    paths.forEach(p => p.classList.remove('selected'));
-                    path.classList.add('selected');
-                    mostrarTooltip(e);
-                });
-            });
-
-            // Zoom con rueda de mouse (PC)
-            container.addEventListener('wheel', (e) => {
+            if (e.touches.length === 1 && isDragging && scale > 1) {
+                pointX = e.touches[0].clientX - startX;
+                pointY = e.touches[0].clientY - startY;
+                aplicarTransformacion(svg);
+            } else if (e.touches.length === 2) {
                 e.preventDefault();
-                const rect = container.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+                const dist = getDistance(e.touches);
+                if (initialPinchDist === 0) return;
 
-                const delta = -e.deltaY;
-                const factor = delta > 0 ? 1.25 : 0.8;
-                const newScale = Math.min(Math.max(1, scale * factor), MAX_ZOOM);
+                const factor = dist / initialPinchDist;
+                const newScale = Math.min(Math.max(1, initialScale * factor), MAX_ZOOM);
 
                 if (newScale !== scale) {
+                    const rect = container.getBoundingClientRect();
+                    const mid = getMidpoint(e.touches);
+                    const mouseX = mid.x - rect.left;
+                    const mouseY = mid.y - rect.top;
+
                     pointX = mouseX - (mouseX - pointX) * (newScale / scale);
                     pointY = mouseY - (mouseY - pointY) * (newScale / scale);
                     scale = newScale;
@@ -363,94 +449,30 @@
 
                     aplicarTransformacion(svg);
                 }
-            }, { passive: false });
-
-            // Arrastrar con mouse (PC)
-            container.addEventListener('mousedown', (e) => {
-                if (scale > 1) {
-                    isDragging = true;
-                    startX = e.clientX - pointX;
-                    startY = e.clientY - pointY;
-                }
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                pointX = e.clientX - startX;
-                pointY = e.clientY - startY;
-                aplicarTransformacion(svg);
-            });
-
-            window.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-
-            // GESTOS TÁCTILES (Celular: Pinch Zoom y Drag)
-            container.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    isDragging = true;
-                    startX = e.touches[0].clientX - pointX;
-                    startY = e.touches[0].clientY - pointY;
-                } else if (e.touches.length === 2) {
-                    isDragging = false;
-                    initialPinchDist = getDistance(e.touches);
-                    initialScale = scale;
-                }
-            }, { passive: true });
-
-            container.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 1 && isDragging && scale > 1) {
-                    pointX = e.touches[0].clientX - startX;
-                    pointY = e.touches[0].clientY - startY;
-                    aplicarTransformacion(svg);
-                } else if (e.touches.length === 2) {
-                    e.preventDefault();
-                    const dist = getDistance(e.touches);
-                    if (initialPinchDist === 0) return;
-
-                    const factor = dist / initialPinchDist;
-                    const newScale = Math.min(Math.max(1, initialScale * factor), MAX_ZOOM);
-
-                    if (newScale !== scale) {
-                        const rect = container.getBoundingClientRect();
-                        const mid = getMidpoint(e.touches);
-                        const mouseX = mid.x - rect.left;
-                        const mouseY = mid.y - rect.top;
-
-                        pointX = mouseX - (mouseX - pointX) * (newScale / scale);
-                        pointY = mouseY - (mouseY - pointY) * (newScale / scale);
-                        scale = newScale;
-
-                        if (scale === 1) {
-                            pointX = 0;
-                            pointY = 0;
-                        }
-
-                        aplicarTransformacion(svg);
-                    }
-                }
-            }, { passive: false });
-
-            container.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) {
-                    initialPinchDist = 0;
-                }
-                if (e.touches.length === 0) {
-                    isDragging = false;
-                }
-            });
-
-            container.addEventListener('mouseleave', deseleccionarTodo);
-        }
-
-        document.addEventListener('click', deseleccionarTodo);
-        document.addEventListener('touchstart', (e) => {
-            if (!e.target.closest('path') && !e.target.closest('#map-container')) {
-                deseleccionarTodo();
             }
-        }, { passive: true });
+        }, { passive: false });
 
-        cargarMapa('bolivia');
-    </script>
+        container.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                initialPinchDist = 0;
+            }
+            if (e.touches.length === 0) {
+                isDragging = false;
+            }
+        });
+
+        container.addEventListener('mouseleave', deseleccionarTodo);
+    }
+
+    document.addEventListener('click', deseleccionarTodo);
+    document.addEventListener('touchstart', (e) => {
+        if (!e.target.closest('path') && !e.target.closest('#map-container')) {
+            deseleccionarTodo();
+        }
+    }, { passive: true });
+
+    // Carga inicial
+    cargarMapa('bolivia');
+</script>
 </body>
 </html>
