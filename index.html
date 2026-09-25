@@ -20,7 +20,7 @@
             align-items: center;
             min-height: 100vh;
             padding: 16px 8px;
-            overflow: hidden; /* Evita rebotes de pantalla en celulares */
+            overflow: hidden;
         }
 
         /* Botones de navegación */
@@ -67,17 +67,15 @@
             align-items: center;
             position: relative;
             overflow: hidden;
-            touch-action: none; /* Control táctil personalizado */
+            touch-action: none;
         }
 
         #map-container svg {
             width: 100%;
             height: 100%;
-            max-height: 100%;
             display: block;
-            transform-origin: center center; /* Centrado para transformaciones */
+            transform-origin: 0 0; /* Necesario para que el zoom vaya exacto al cursor/dedo */
             cursor: grab;
-            margin: auto;
         }
 
         #map-container svg:active {
@@ -253,7 +251,9 @@
                     
                     const svg = container.querySelector('svg');
                     if (svg) {
-                        centrarMapa();
+                        // Asegurar que el SVG mantenga proporciones y se centre de forma nativa
+                        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        resetearZoom(svg);
                         configurarPaths(svg);
                     }
 
@@ -269,15 +269,10 @@
             }
         }
 
-        function centrarMapa() {
-            const container = document.getElementById('map-container');
-            const svg = container.querySelector('svg');
-            if (!svg) return;
-
+        function resetearZoom(svg) {
             scale = 1;
             pointX = 0;
             pointY = 0;
-
             aplicarTransformacion(svg);
         }
 
@@ -470,12 +465,6 @@
 
             container.addEventListener('mouseleave', deseleccionarTodo);
         }
-
-        window.addEventListener('resize', () => {
-            if (scale === 1) {
-                centrarMapa();
-            }
-        });
 
         document.addEventListener('click', deseleccionarTodo);
         document.addEventListener('touchstart', (e) => {
