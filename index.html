@@ -76,9 +76,10 @@
             display: block;
             transform-origin: 0 0;
             cursor: grab;
-            will-change: opacity, transform;
+            /* Se remueve will-change para evitar rasterizado en baja resolución */
             shape-rendering: geometricPrecision;
             text-rendering: geometricPrecision;
+            image-rendering: high-quality;
         }
 
         #map-container svg:active {
@@ -265,7 +266,7 @@
                 if (nuevoSvg) {
                     nuevoSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     
-                    await incrustarBanderaVectorial(nuevoSvg, urlBandera);
+                    const elementoBandera = await incrustarBanderaVectorial(nuevoSvg, urlBandera);
 
                     resetearZoom(nuevoSvg);
                     configurarPaths(nuevoSvg);
@@ -278,18 +279,31 @@
                         container.innerHTML = '';
                         container.appendChild(nuevoSvg);
 
+                        // Animación suave de aparición del mapa
                         const animEntrada = nuevoSvg.animate([
                             { opacity: 0 },
                             { opacity: 1 }
                         ], {
-                            duration: 700,
-                            easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+                            duration: 500,
+                            easing: 'ease-out'
                         });
 
                         animEntrada.onfinish = () => {
                             nuevoSvg.style.opacity = '1';
                             animEntrada.cancel();
                         };
+
+                        // Animación pro e independiente para la bandera (Ease-In largo, Ease-Out corto)
+                        if (elementoBandera) {
+                            elementoBandera.animate([
+                                { opacity: 0, transform: 'scale(0.7)' },
+                                { opacity: 1, transform: 'scale(1)' }
+                            ], {
+                                duration: 850,
+                                easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                                fill: 'forwards'
+                            });
+                        }
                     };
 
                     if (svgAnterior) {
@@ -319,7 +333,7 @@
         }
 
         async function incrustarBanderaVectorial(svg, urlBandera) {
-            if (!svg) return;
+            if (!svg) return null;
 
             const ESCALA_PORCENTAJE = 20;
             const X_OFFSET = 55;
@@ -344,7 +358,12 @@
             const xCentro = vbX + (vbWidth / 2) - (anchoBandera / 2) + X_OFFSET;
             const yCentro = vbY + (vbHeight / 2) + Y_OFFSET;
 
-            // Cargar directamente la imagen vectorial en la etiqueta <image> para mantener 100% nitidez SVG
+            // Grupo contenedor para animar la bandera con centro de transformación propio
+            const grupoBandera = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+            grupoBandera.setAttribute('id', 'capa-bandera');
+            grupoBandera.style.transformOrigin = `${xCentro + (anchoBandera / 2)}px ${yCentro + (anchoBandera / 2)}px`;
+            grupoBandera.style.pointerEvents = 'none';
+
             const img = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'image');
             img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlBandera);
             img.setAttribute('href', urlBandera);
@@ -352,10 +371,11 @@
             img.setAttribute('y', yCentro);
             img.setAttribute('width', anchoBandera);
             img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-            
-            img.style.pointerEvents = 'none';
 
-            svg.appendChild(img);
+            grupoBandera.appendChild(img);
+            svg.appendChild(grupoBandera);
+
+            return grupoBandera;
         }
 
         function resetearZoom(svg) {
