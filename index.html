@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PLAN PATRIA GRANDE</title>
     <style>
         * {
@@ -20,7 +20,6 @@
             align-items: center;
             min-height: 100vh;
             padding: 24px 16px;
-            overflow-x: hidden;
         }
 
         /* Botones de navegación */
@@ -32,7 +31,6 @@
             gap: 4px;
             border: 1px solid #dbdbdb;
             margin-bottom: 20px;
-            z-index: 10;
         }
 
         .btn {
@@ -65,9 +63,7 @@
             justify-content: center;
             align-items: center;
             min-height: 500px;
-            overflow: hidden;
             position: relative;
-            touch-action: manipulation;
         }
 
         #map-container svg {
@@ -75,8 +71,6 @@
             height: auto;
             max-height: 85vh;
             display: block;
-            transition: transform 0.3s ease-out;
-            transform-origin: center center;
         }
 
         /* Forzar texto blanco */
@@ -101,7 +95,7 @@
             cursor: pointer;
         }
 
-        /* Tooltip Flotante para celular y PC */
+        /* Tooltip Flotante */
         .map-tooltip {
             position: fixed;
             background: rgba(17, 24, 39, 0.95);
@@ -155,9 +149,6 @@
             '#00703F': '#7f1d1d'
         };
 
-        let isZoomed = false;
-        let lastTap = 0;
-
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
             const btnBolivia = document.getElementById('btn-bolivia');
@@ -195,25 +186,20 @@
                 });
 
                 container.innerHTML = svgCode;
-                inicializarInteracciones();
+                inicializarTooltip();
             } catch (error) {
                 container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
                 console.error(error);
             }
         }
 
-        function inicializarInteracciones() {
+        function inicializarTooltip() {
             const container = document.getElementById('map-container');
             const svg = container.querySelector('svg');
             const tooltip = document.getElementById('tooltip');
 
             if (!svg) return;
 
-            // Reset Zoom
-            isZoomed = false;
-            svg.style.transform = 'scale(1)';
-
-            // Eventos de Tooltip al tocar/pasar mouse sobre regiones
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
                 const nombre = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id');
@@ -238,7 +224,7 @@
                 }, { passive: true });
             });
 
-            // Ocultar Tooltip al tocar fuera
+            // Ocultar tooltip al tocar o mover fuera
             document.addEventListener('touchstart', (e) => {
                 if (!e.target.closest('#map-container')) {
                     tooltip.style.display = 'none';
@@ -248,31 +234,6 @@
 
             container.addEventListener('mouseleave', () => {
                 tooltip.style.display = 'none';
-            });
-
-            // Doble Tap para Zoom en Celular
-            container.addEventListener('touchend', (e) => {
-                const currentTime = new Date().getTime();
-                const tapLength = currentTime - lastTap;
-                
-                if (tapLength < 300 && tapLength > 0) {
-                    e.preventDefault();
-                    const touch = e.changedTouches[0];
-                    const rect = container.getBoundingClientRect();
-                    
-                    const x = ((touch.clientX - rect.left) / rect.width) * 100;
-                    const y = ((touch.clientY - rect.top) / rect.height) * 100;
-
-                    if (!isZoomed) {
-                        svg.style.transformOrigin = `${x}% ${y}%`;
-                        svg.style.transform = 'scale(2.5)';
-                        isZoomed = true;
-                    } else {
-                        svg.style.transform = 'scale(1)';
-                        isZoomed = false;
-                    }
-                }
-                lastTap = currentTime;
             });
         }
 
