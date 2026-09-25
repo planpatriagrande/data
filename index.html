@@ -354,7 +354,7 @@
 
         function actualizarGrosorBordes(svg) {
             const calculatedStroke = 0.1 / scale;
-            const finalStrokeWidth = Math.max(calculatedStroke, 0.1);
+            const finalStrokeWidth = Math.max(calculatedStroke, 0.05);
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
