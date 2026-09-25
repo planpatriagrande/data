@@ -158,6 +158,49 @@
             '#00703F': '#7f1d1d'
         };
 
+        // Diccionario con los códigos exactos dictados
+        const codigosAMBA = {
+            'p02122': 'Vicente López',
+            'p02106': 'San Isidro',
+            'p02105': 'San Fernando',
+            'p02113': 'Tigre',
+            'p02035': 'Escobar',
+            'p02016': 'Campana',
+            'p02125': 'Zárate',
+            'p02037': 'Exaltación de la Cruz',
+            'p02071': 'Luján',
+            'p02051': 'General Rodríguez',
+            'p02089': 'Pilar',
+            'p02130': 'Malvinas Argentinas',
+            'p02129': 'José C. Paz',
+            'p02053': 'San Miguel',
+            'p02079': 'Moreno',
+            'p02052': 'General San Martín',
+            'p02118': 'Tres de Febrero',
+            'p02080': 'Morón',
+            'p02134': 'Hurlingham',
+            'p02133': 'Ituzaingó',
+            'p02077': 'Merlo',
+            'p02075': 'Marcos Paz',
+            'p02061': 'La Matanza',
+            'p02132': 'Ezeiza',
+            'p02045': 'General Las Heras',
+            'p02017': 'Cañuelas',
+            'p02109': 'San Vicente',
+            'p02063': 'La Plata',
+            'p02012': 'Berisso',
+            'p02034': 'Ensenada',
+            'p02011': 'Berazategui',
+            'p02092': 'Quilmes',
+            'p02004': 'Avellaneda',
+            'p02062': 'Lanús',
+            'p02070': 'Lomas de Zamora',
+            'p02036': 'Esteban Echeverría',
+            'p02003': 'Almirante Brown',
+            'p02038': 'Florencio Varela',
+            'p02128': 'Presidente Perón'
+        };
+
         // Variables de Zoom para PC
         let scale = 1;
         let pointX = 0;
@@ -221,6 +264,19 @@
             }
         }
 
+        function obtenerNombreCorrecto(path) {
+            const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
+            const key = rawName.trim().toLowerCase();
+
+            // Si es uno de los códigos dictados, devuelve la traducción
+            if (codigosAMBA[key]) {
+                return codigosAMBA[key];
+            }
+
+            // Para el resto del país, devuelve el nombre original sin guiones bajos
+            return rawName.replace(/_/g, ' ').trim();
+        }
+
         function inicializarInteracciones() {
             const container = document.getElementById('map-container');
             const svg = container.querySelector('svg');
@@ -236,14 +292,14 @@
 
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
-                const nombre = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id');
+                const nombre = obtenerNombreCorrecto(path);
                 if (!nombre) return;
 
                 const mostrarTooltip = (e) => {
                     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-                    tooltip.textContent = nombre.replace(/_/g, ' ');
+                    tooltip.textContent = nombre;
                     tooltip.style.display = 'block';
                     tooltip.style.left = `${clientX}px`;
                     tooltip.style.top = `${clientY - 15}px`;
@@ -269,7 +325,7 @@
                 });
             });
 
-            // Zoom con la Rueda del Mouse (PC) - Aumentado a un máximo de 25x
+            // Zoom con la Rueda del Mouse (PC) - Máximo 25x
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const rect = container.getBoundingClientRect();
