@@ -265,6 +265,16 @@
 
                     resetearZoom(svg);
                     configurarPaths(svg);
+
+                    // Fade-in rápido de opacidad para todo el SVG del mapa
+                    svg.animate([
+                        { opacity: 0 },
+                        { opacity: 1 }
+                    ], {
+                        duration: 250,
+                        easing: 'ease-out',
+                        fill: 'forwards'
+                    });
                 }
 
                 if (!listenersAsignados) {
@@ -319,16 +329,6 @@
             img.style.pointerEvents = 'none';
 
             svg.appendChild(img);
-
-            // Animación rápida de opacidad (fade-in en 250ms)
-            img.animate([
-                { opacity: 0 },
-                { opacity: 1 }
-            ], {
-                duration: 250,
-                easing: 'ease-out',
-                fill: 'forwards'
-            });
         }
 
         function obtenerBanderaBajaResolucion(urlSvg, factorResolucion = 0.5) {
