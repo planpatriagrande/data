@@ -88,11 +88,9 @@
             fill: #ffffff !important;
         }
 
-        /* Bordes (stroke) adaptativos que NO se engordan con el zoom */
+        /* Color base de los bordes */
         #map-container svg path {
-            stroke: #1f2937 !important;
-            stroke-width: 0.5px !important;
-            vector-effect: non-scaling-stroke !important; /* Evita que el stroke crezca con el zoom */
+            stroke: #1f2937;
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: fill 0.2s ease;
@@ -101,8 +99,6 @@
         #map-container svg path:hover,
         #map-container svg path.selected {
             stroke: #ffffff !important;
-            stroke-width: 1.5px !important;
-            vector-effect: non-scaling-stroke !important;
             cursor: pointer;
         }
 
@@ -160,7 +156,6 @@
             '#00703F': '#7f1d1d'
         };
 
-        // Diccionario con los códigos exactos dictados
         const codigosAMBA = {
             'p02122': 'Vicente López',
             'p02106': 'San Isidro',
@@ -203,7 +198,6 @@
             'p02128': 'Presidente Perón'
         };
 
-        // Variables de Zoom para PC
         let scale = 1;
         let pointX = 0;
         let pointY = 0;
@@ -277,6 +271,17 @@
             return rawName.replace(/_/g, ' ').trim();
         }
 
+        // Ajusta el grosor según la escala
+        function actualizarGrosorBordes(svg) {
+            const baseStroke = 0.4;
+            const newStrokeWidth = baseStroke / scale;
+            
+            const paths = svg.querySelectorAll('path');
+            paths.forEach(path => {
+                path.style.strokeWidth = `${newStrokeWidth}px`;
+            });
+        }
+
         function inicializarInteracciones() {
             const container = document.getElementById('map-container');
             const svg = container.querySelector('svg');
@@ -284,11 +289,12 @@
 
             if (!svg) return;
 
-            // Reiniciar zoom y posición
             scale = 1;
             pointX = 0;
             pointY = 0;
             svg.style.transform = `translate(0px, 0px) scale(1)`;
+            
+            actualizarGrosorBordes(svg);
 
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
@@ -325,7 +331,7 @@
                 });
             });
 
-            // Zoom con la Rueda del Mouse (PC) - Límite ampliado hasta 50x
+            // Zoom con recálculo dinámico de stroke
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const rect = container.getBoundingClientRect();
@@ -347,10 +353,11 @@
                     }
 
                     svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+                    actualizarGrosorBordes(svg);
                 }
             }, { passive: false });
 
-            // Arrastrar mapa con el mouse (PC)
+            // Arrastrar mapa
             container.addEventListener('mousedown', (e) => {
                 if (scale > 1) {
                     isDragging = true;
@@ -373,7 +380,6 @@
             container.addEventListener('mouseleave', deseleccionarTodo);
         }
 
-        // Deseleccionar al tocar/cliquear fuera del área
         document.addEventListener('click', deseleccionarTodo);
         document.addEventListener('touchstart', (e) => {
             if (!e.target.closest('path')) {
