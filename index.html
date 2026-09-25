@@ -76,6 +76,7 @@
             display: block;
             transform-origin: 0 0;
             cursor: grab;
+            will-change: opacity, transform;
         }
 
         #map-container svg:active {
@@ -245,19 +246,19 @@
             deseleccionarTodo();
 
             try {
-                // Fetch del SVG
+                // Fetch del mapa
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Error al cargar el SVG');
                 let svgCode = await response.text();
 
-                // Reemplazo de paleta
+                // Cambio de paleta
                 Object.keys(tablaColores).forEach(verde => {
                     const rojo = tablaColores[verde];
                     const regex = new RegExp(verde, 'gi');
                     svgCode = svgCode.replace(regex, rojo);
                 });
 
-                // Parsear a DOM en memoria sin tocar la pantalla
+                // Construcción DOM en segundo plano
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(svgCode, 'image/svg+xml');
                 const nuevoSvg = doc.querySelector('svg');
@@ -265,29 +266,55 @@
                 if (nuevoSvg) {
                     nuevoSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     
-                    // Incrustar bandera en el elemento en memoria
                     await incrustarBanderaAlCentro(nuevoSvg, urlBandera);
 
-                    // Configurar interacciones en memoria
                     resetearZoom(nuevoSvg);
                     configurarPaths(nuevoSvg);
 
-                    // Ocultar antes de renderizar para prevenir flicker
+                    // Preparar el elemento invisible para la animación pro
                     nuevoSvg.style.opacity = '0';
 
-                    // Reemplazo limpio en el DOM
-                    container.innerHTML = '';
-                    container.appendChild(nuevoSvg);
+                    const svgAnterior = container.querySelector('svg');
 
-                    // Animación suave de 500ms
-                    nuevoSvg.animate([
-                        { opacity: 0 },
-                        { opacity: 1 }
-                    ], {
-                        duration: 500,
-                        easing: 'ease-out',
-                        fill: 'forwards'
-                    });
+                    if (svgAnterior) {
+                        // Transición fluida entre ambos SVG sin parpadeo
+                        const animSalida = svgAnterior.animate([
+                            { opacity: parseFloat(getComputedStyle(svgAnterior).opacity) || 1 },
+                            { opacity: 0 }
+                        ], {
+                            duration: 150,
+                            easing: 'ease-out',
+                            fill: 'forwards'
+                        });
+
+                        animSalida.onfinish = () => {
+                            container.innerHTML = '';
+                            container.appendChild(nuevoSvg);
+
+                            // Transición elegante con easing personalizado (Ease-In largo / Ease-Out corto)
+                            nuevoSvg.animate([
+                                { opacity: 0, transform: `translate(${pointX}px, ${pointY}px) scale(${scale * 0.98})` },
+                                { opacity: 1, transform: `translate(${pointX}px, ${pointY}px) scale(${scale})` }
+                            ], {
+                                duration: 800,
+                                easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                                fill: 'forwards'
+                            });
+                        };
+                    } else {
+                        // Carga inicial directa
+                        container.innerHTML = '';
+                        container.appendChild(nuevoSvg);
+
+                        nuevoSvg.animate([
+                            { opacity: 0, transform: `translate(${pointX}px, ${pointY}px) scale(${scale * 0.98})` },
+                            { opacity: 1, transform: `translate(${pointX}px, ${pointY}px) scale(${scale})` }
+                        ], {
+                            duration: 800,
+                            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                            fill: 'forwards'
+                        });
+                    }
                 }
 
                 if (!listenersAsignados) {
@@ -563,7 +590,7 @@
             }
         }, { passive: true });
 
-        // Carga inicial: Paraguayos
+        // Carga inicial
         cargarMapa('paraguay');
     </script>
 </body>
