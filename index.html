@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes">
     <title>PLAN PATRIA GRANDE</title>
     <style>
         * {
@@ -88,19 +88,21 @@
             fill: #ffffff !important;
         }
 
-        /* Bordes (stroke) en departamentos y ciudades */
+        /* Bordes (stroke) adaptativos que NO se engordan con el zoom */
         #map-container svg path {
             stroke: #1f2937 !important;
-            stroke-width: 0.3px !important;
+            stroke-width: 0.5px !important;
+            vector-effect: non-scaling-stroke !important; /* Evita que el stroke crezca con el zoom */
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: fill 0.2s ease, stroke-width 0.2s ease;
+            transition: fill 0.2s ease;
         }
 
         #map-container svg path:hover,
         #map-container svg path.selected {
             stroke: #ffffff !important;
-            stroke-width: 1px !important;
+            stroke-width: 1.5px !important;
+            vector-effect: non-scaling-stroke !important;
             cursor: pointer;
         }
 
@@ -268,12 +270,10 @@
             const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
             const key = rawName.trim().toLowerCase();
 
-            // Si es uno de los códigos dictados, devuelve la traducción
             if (codigosAMBA[key]) {
                 return codigosAMBA[key];
             }
 
-            // Para el resto del país, devuelve el nombre original sin guiones bajos
             return rawName.replace(/_/g, ' ').trim();
         }
 
@@ -325,7 +325,7 @@
                 });
             });
 
-            // Zoom con la Rueda del Mouse (PC) - Máximo 25x
+            // Zoom con la Rueda del Mouse (PC) - Límite ampliado hasta 50x
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const rect = container.getBoundingClientRect();
@@ -333,8 +333,8 @@
                 const mouseY = e.clientY - rect.top;
 
                 const delta = -e.deltaY;
-                const factor = delta > 0 ? 1.18 : 0.82;
-                const newScale = Math.min(Math.max(1, scale * factor), 25);
+                const factor = delta > 0 ? 1.2 : 0.8;
+                const newScale = Math.min(Math.max(1, scale * factor), 50);
 
                 if (newScale !== scale) {
                     pointX = mouseX - (mouseX - pointX) * (newScale / scale);
