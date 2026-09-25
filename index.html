@@ -269,7 +269,7 @@
                 });
             });
 
-            // Zoom con la Rueda del Mouse (PC)
+            // Zoom con la Rueda del Mouse (PC) - Aumentado a un máximo de 25x
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const rect = container.getBoundingClientRect();
@@ -277,8 +277,8 @@
                 const mouseY = e.clientY - rect.top;
 
                 const delta = -e.deltaY;
-                const factor = delta > 0 ? 1.15 : 0.85;
-                const newScale = Math.min(Math.max(1, scale * factor), 8);
+                const factor = delta > 0 ? 1.18 : 0.82;
+                const newScale = Math.min(Math.max(1, scale * factor), 25);
 
                 if (newScale !== scale) {
                     pointX = mouseX - (mouseX - pointX) * (newScale / scale);
