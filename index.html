@@ -245,33 +245,46 @@
             deseleccionarTodo();
 
             try {
+                // Fetch del SVG
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Error al cargar el SVG');
                 let svgCode = await response.text();
 
+                // Reemplazo de paleta
                 Object.keys(tablaColores).forEach(verde => {
                     const rojo = tablaColores[verde];
                     const regex = new RegExp(verde, 'gi');
                     svgCode = svgCode.replace(regex, rojo);
                 });
 
-                container.innerHTML = svgCode;
-                
-                const svg = container.querySelector('svg');
-                if (svg) {
-                    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                // Parsear a DOM en memoria sin tocar la pantalla
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svgCode, 'image/svg+xml');
+                const nuevoSvg = doc.querySelector('svg');
+
+                if (nuevoSvg) {
+                    nuevoSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     
-                    await incrustarBanderaAlCentro(svg, urlBandera);
+                    // Incrustar bandera en el elemento en memoria
+                    await incrustarBanderaAlCentro(nuevoSvg, urlBandera);
 
-                    resetearZoom(svg);
-                    configurarPaths(svg);
+                    // Configurar interacciones en memoria
+                    resetearZoom(nuevoSvg);
+                    configurarPaths(nuevoSvg);
 
-                    // Fade-in rápido de opacidad para todo el SVG del mapa
-                    svg.animate([
+                    // Ocultar antes de renderizar para prevenir flicker
+                    nuevoSvg.style.opacity = '0';
+
+                    // Reemplazo limpio en el DOM
+                    container.innerHTML = '';
+                    container.appendChild(nuevoSvg);
+
+                    // Animación suave de 500ms
+                    nuevoSvg.animate([
                         { opacity: 0 },
                         { opacity: 1 }
                     ], {
-                        duration: 250,
+                        duration: 500,
                         easing: 'ease-out',
                         fill: 'forwards'
                     });
@@ -294,7 +307,7 @@
             const ESCALA_PORCENTAJE = 20;
             const X_OFFSET = 55;
             const Y_OFFSET = -70;
-            const ESCALA_RESOLUCION = 0.5; // Resolución al 50%
+            const ESCALA_RESOLUCION = 0.5;
 
             let vbX = 0, vbY = 0, vbWidth = 1000, vbHeight = 1000;
 
@@ -315,10 +328,9 @@
             const xCentro = vbX + (vbWidth / 2) - (anchoBandera / 2) + X_OFFSET;
             const yCentro = vbY + (vbHeight / 2) + Y_OFFSET;
 
-            // Renderizar la bandera en baja resolución
             const urlOptimizada = await obtenerBanderaBajaResolucion(urlBandera, ESCALA_RESOLUCION);
 
-            const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            const img = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'image');
             img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlOptimizada);
             img.setAttribute('href', urlOptimizada);
             img.setAttribute('x', xCentro);
