@@ -24,21 +24,20 @@
 
         /* Botones de navegación */
         .button-group {
-            background: #271111;
+            background: #111827;
             padding: 5px;
             border-radius: 12px;
             display: inline-flex;
             gap: 4px;
             border: 1px solid #1f2937;
             margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
         .btn {
             background: transparent;
             border: none;
             color: #9ca3af;
-            padding: 10px 28px;
+            padding: 10px 24px;
             font-size: 15px;
             font-weight: 600;
             border-radius: 8px;
@@ -48,7 +47,7 @@
         }
 
         .btn.active {
-            background: #b91010;
+            background: #b91c1c; /* Rojo plano sin sombra */
             color: #ffffff;
         }
 
@@ -73,17 +72,16 @@
             display: block;
         }
 
-        /* Forzar texto blanco en todo el SVG */
+        /* Forzar texto blanco */
         #map-container svg text,
         #map-container svg tspan {
             fill: #ffffff !important;
         }
 
         /* Bordes (stroke) en departamentos y ciudades */
-        #map-container svg path,
-        #map-container svg polygon {
+        #map-container svg path {
             stroke: #1f2937 !important;
-            stroke-width: 0.2px !important;
+            stroke-width: 0.3px !important;
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: fill 0.2s ease, stroke-width 0.2s ease;
@@ -107,6 +105,7 @@
     <div class="button-group">
         <button class="btn" id="btn-bolivia" onclick="cargarMapa('bolivia')">Bolivianos</button>
         <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguayos</button>
+        <button class="btn" id="btn-peru" onclick="cargarMapa('peru')">Peruanos</button>
     </div>
 
     <div id="map-container">
@@ -116,31 +115,42 @@
     <script>
         const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
+        const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
-        // Reemplazo directo de los valores HEX estándar de la escala de verdes por rojos puros/cálidos
+        // Reemplazo de escala de verdes por rojos
         const tablaColores = {
-            '#FFFFE5': '#ffffff', // Blanco
-            '#F5FCAB': '#f87171', // Rojo medio claro
-            '#B8E599': '#ef4444', // Rojo medio
-            '#78C679': '#dc2626', // Rojo
-            '#2DAE58': '#b91c1c', // Rojo oscuro
-            '#00703F': '#7f1d1d'  // Rojo muy oscuro
+            '#edf8e9': '#fca5a5',
+            '#c7e9c0': '#f87171',
+            '#a1d99b': '#ef4444',
+            '#74c476': '#dc2626',
+            '#31a354': '#b91c1c',
+            '#006d2c': '#7f1d1d'
         };
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
             const btnBolivia = document.getElementById('btn-bolivia');
             const btnParaguay = document.getElementById('btn-paraguay');
+            const btnPeru = document.getElementById('btn-peru');
 
+            // Desactivar todos los botones
+            btnBolivia.classList.remove('active');
+            btnParaguay.classList.remove('active');
+            btnPeru.classList.remove('active');
+
+            let url = URL_BOLIVIA;
+
+            // Activar el botón seleccionado y asignar la URL correspondiente
             if (pais === 'bolivia') {
                 btnBolivia.classList.add('active');
-                btnParaguay.classList.remove('active');
-            } else {
+                url = URL_BOLIVIA;
+            } else if (pais === 'paraguay') {
                 btnParaguay.classList.add('active');
-                btnBolivia.classList.remove('active');
+                url = URL_PARAGUAY;
+            } else if (pais === 'peru') {
+                btnPeru.classList.add('active');
+                url = URL_PERU;
             }
-
-            const url = (pais === 'bolivia') ? URL_BOLIVIA : URL_PARAGUAY;
 
             container.innerHTML = `<div class="loading">Cargando mapa...</div>`;
 
@@ -149,7 +159,6 @@
                 if (!response.ok) throw new Error('Error al cargar el SVG');
                 let svgCode = await response.text();
 
-                // Aplicar sustitución directa de colores en el texto del SVG
                 Object.keys(tablaColores).forEach(verde => {
                     const rojo = tablaColores[verde];
                     const regex = new RegExp(verde, 'gi');
