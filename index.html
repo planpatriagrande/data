@@ -281,14 +281,10 @@
         async function incrustarBanderaAlCentro(svg, urlBandera) {
             if (!svg) return;
 
-            // =========================================================
-            // PARAMETROS DE AJUSTE MANUAL
-            // =========================================================
-            const ESCALA_PORCENTAJE = 20;  // Tamaño relativo respecto al ancho del mapa (20%)
-            const X_OFFSET = 55;          // Desplazamiento X
-            const Y_OFFSET = -70;         // Desplazamiento Y
-            const ESCALA_RESOLUCION = 0.5; // Reducción de resolución al 50%
-            // =========================================================
+            const ESCALA_PORCENTAJE = 20;
+            const X_OFFSET = 55;
+            const Y_OFFSET = -70;
+            const ESCALA_RESOLUCION = 0.5; // Resolución al 50%
 
             let vbX = 0, vbY = 0, vbWidth = 1000, vbHeight = 1000;
 
@@ -309,7 +305,7 @@
             const xCentro = vbX + (vbWidth / 2) - (anchoBandera / 2) + X_OFFSET;
             const yCentro = vbY + (vbHeight / 2) + Y_OFFSET;
 
-            // Reducir la resolución de la bandera al 50% mediante Canvas temporal
+            // Renderizar la bandera en baja resolución
             const urlOptimizada = await obtenerBanderaBajaResolucion(urlBandera, ESCALA_RESOLUCION);
 
             const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
@@ -323,9 +319,18 @@
             img.style.pointerEvents = 'none';
 
             svg.appendChild(img);
+
+            // Animación rápida de opacidad (fade-in en 250ms)
+            img.animate([
+                { opacity: 0 },
+                { opacity: 1 }
+            ], {
+                duration: 250,
+                easing: 'ease-out',
+                fill: 'forwards'
+            });
         }
 
-        // Función que renderiza la bandera en un canvas al 50% de escala para aliviar el lag
         function obtenerBanderaBajaResolucion(urlSvg, factorResolucion = 0.5) {
             return new Promise((resolve) => {
                 const imgTemp = new Image();
@@ -334,14 +339,13 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // Definir tamaño al 50% de la imagen original
                     canvas.width = Math.round((imgTemp.width || 400) * factorResolucion);
                     canvas.height = Math.round((imgTemp.height || 300) * factorResolucion);
 
                     ctx.drawImage(imgTemp, 0, 0, canvas.width, canvas.height);
                     resolve(canvas.toDataURL('image/png'));
                 };
-                imgTemp.onerror = () => resolve(urlSvg); // Si falla, retorna la original
+                imgTemp.onerror = () => resolve(urlSvg);
                 imgTemp.src = urlSvg;
             });
         }
