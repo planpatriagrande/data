@@ -203,7 +203,6 @@
             'p02128': 'Presidente Perón'
         };
 
-        // Variables de Zoom y Transformación
         let scale = 1;
         let pointX = 0;
         let pointY = 0;
@@ -263,8 +262,8 @@
                     if (svg) {
                         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         
-                        // Incrustar el vector nativo de la bandera sobre el texto "2026"
-                        await incrustarBandera(svg, urlBandera);
+                        // Incrustar bandera en la capa más superficial (frente)
+                        await incrustarBanderaAlFrente(svg, urlBandera);
 
                         resetearZoom(svg);
                         configurarPaths(svg);
@@ -282,60 +281,66 @@
             }
         }
 
-        async function incrustarBandera(svg, urlBandera) {
+        async function incrustarBanderaAlFrente(svg, urlBandera) {
             if (!svg) return;
 
-            // Buscar el texto "2026"
-            const elementosTexto = Array.from(svg.querySelectorAll('text, tspan'));
-            const nodo2026 = elementosTexto.find(el => el.textContent.trim() === '2026');
-
-            if (!nodo2026) return;
-
             try {
-                // Descargar el SVG de la bandera
+                // Descargar el contenido plano de la bandera
                 const res = await fetch(urlBandera);
-                if (!res.ok) throw new Error('No se pudo cargar la bandera');
-                const banderaSvgText = await res.text();
+                if (!res.ok) throw new Error('Error recuperando la bandera');
+                const rawBandera = await res.text();
 
-                // Parsear a DOM
-                const parser = new DOMParser();
-                const docBandera = parser.parseFromString(banderaSvgText, 'image/svg+xml');
-                const svgBandera = docBandera.querySelector('svg');
+                // Convertir a Data URI para garantizar renderizado inmediato sin fallos de proxy
+                const encodedBandera = 'data:image/svg+xml;utf8,' + encodeURIComponent(rawBandera);
 
-                if (!svgBandera) return;
-
-                // Calcular la caja delimitadora (BBox) real del elemento del texto
-                const target = nodo2026.tagName.toLowerCase() === 'tspan' ? nodo2026.parentElement : nodo2026;
-                const bbox = target.getBBox();
-
-                // Proporción 3:2
+                // Posicionamiento inteligente
+                let xPos = 0;
+                let yPos = 0;
                 const ancho = 120;
                 const alto = 80;
 
-                // Centrar dinámicamente respecto al ancho real del texto "2026"
-                const xPos = (bbox.x + bbox.width / 2) - (ancho / 2);
-                const yPos = bbox.y - alto - 20; // 20px arriba del "2026"
+                // Buscar el nodo que contiene el texto "2026"
+                const elementosTexto = Array.from(svg.querySelectorAll('text, tspan'));
+                const nodo2026 = elementosTexto.find(el => el.textContent.includes('2026'));
 
-                // Grupo contenedor
-                const grupo = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                grupo.setAttribute('transform', `translate(${xPos}, ${yPos})`);
+                if (nodo2026) {
+                    const target = nodo2026.tagName.toLowerCase() === 'tspan' ? nodo2026.parentElement : nodo2026;
+                    
+                    // Si el elemento tiene coordenadas x e y directas
+                    const xAttr = parseFloat(target.getAttribute('x'));
+                    const yAttr = parseFloat(target.getAttribute('y'));
 
-                // Obtener viewBox de la bandera para mantener aspecto
-                const viewBox = svgBandera.getAttribute('viewBox') || `0 0 ${svgBandera.getAttribute('width') || 300} ${svgBandera.getAttribute('height') || 200}`;
+                    if (!isNaN(xAttr) && !isNaN(yAttr)) {
+                        xPos = xAttr - (ancho / 2);
+                        yPos = yAttr - alto - 25;
+                    } else {
+                        // Respaldo por caja delimitadora
+                        const bbox = target.getBBox();
+                        xPos = (bbox.x + bbox.width / 2) - (ancho / 2);
+                        yPos = bbox.y - alto - 25;
+                    }
+                } else {
+                    // Si por algún motivo el SVG no tiene la etiqueta "2026", la pone en la esquina superior derecha del mapa
+                    const viewBox = svg.getAttribute('viewBox')?.split(' ').map(Number) || [0, 0, 800, 600];
+                    xPos = viewBox[2] - ancho - 40;
+                    yPos = 40;
+                }
 
-                // Inyectar sub-svg
-                const innerSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                innerSvg.setAttribute('width', ancho);
-                innerSvg.setAttribute('height', alto);
-                innerSvg.setAttribute('viewBox', viewBox);
-                innerSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                innerSvg.innerHTML = svgBandera.innerHTML;
+                // Crear elemento <image> nativo SVG
+                const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                img.setAttribute('href', encodedBandera);
+                img.setAttribute('x', xPos);
+                img.setAttribute('y', yPos);
+                img.setAttribute('width', ancho);
+                img.setAttribute('height', alto);
+                img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                img.style.pointerEvents = 'none'; // Evita interferir con los clics en el mapa
 
-                grupo.appendChild(innerSvg);
-                svg.appendChild(grupo);
+                // appendChild lo coloca AL FINAL del SVG, garantizando que quede POR ENCIMA de todo
+                svg.appendChild(img);
 
             } catch (err) {
-                console.error('Error inyectando la bandera:', err);
+                console.error('Error al incrustar la bandera al frente:', err);
             }
         }
 
