@@ -273,12 +273,12 @@
         // Calcula un grosor visible con límite mínimo y asegura color contrastante
         function actualizarGrosorBordes(svg) {
             // Se calcula para mantener visibilidad constante sin desaparecer
-            const calculatedStroke = 0.5 / scale;
-            const finalStrokeWidth = Math.max(calculatedStroke, 0.15);
+            const calculatedStroke = 0.2 / scale;
+            const finalStrokeWidth = Math.max(calculatedStroke, 0.05);
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
-                path.style.setProperty('stroke', '#4b5563', 'important'); // Gris neutro bien definido
+                path.style.setProperty('stroke', '#101010', 'important'); // Gris neutro bien definido
                 path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
             });
         }
