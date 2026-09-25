@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PLAN PATRIA GRANDE</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             background-color: #000000;
             color: #ffffff;
@@ -14,67 +19,48 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 12px 8px;
+            padding: 16px 8px;
             overflow: hidden;
         }
 
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 12px;
-            z-index: 10;
-        }
-
+        /* Botones de navegación */
         .button-group {
             background: #010409;
-            padding: 4px;
-            border-radius: 10px;
+            padding: 5px;
+            border-radius: 12px;
             display: inline-flex;
             gap: 4px;
-            border: 1px solid #30363d;
+            border: 1px solid #dbdbdb;
+            margin-bottom: 12px;
+            z-index: 10;
         }
 
         .btn {
             background: transparent;
             border: none;
             color: #9ca3af;
-            padding: 6px 12px;
-            font-size: 13px;
+            padding: 8px 16px;
+            font-size: 14px;
             font-weight: 600;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease-in-out;
+            outline: none;
         }
 
-        .btn.active { background: #b91c1c; color: #fff; }
-
-        /* Panel Editor Secreto */
-        .color-picker-tool {
-            display: none;
-            background: #010409;
-            border: 1px solid #30363d;
-            padding: 4px 10px;
-            border-radius: 10px;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
+        .btn.active {
+            background: #b91c1c;
+            color: #ffffff;
         }
 
-        .color-picker-tool input[type="color"] {
-            border: none;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            cursor: pointer;
-            background: none;
+        .btn:hover:not(.active) {
+            color: #ffffff;
         }
 
+        /* Contenedor del mapa */
         #map-container {
             width: 100%;
-            height: calc(100vh - 100px);
+            height: calc(100vh - 80px);
             max-width: 900px;
             display: flex;
             justify-content: center;
@@ -88,14 +74,34 @@
             width: 100%;
             height: 100%;
             display: block;
-            transform-origin: 0 0;
+            transform-origin: 0 0; /* Necesario para que el zoom vaya exacto al cursor/dedo */
             cursor: grab;
         }
 
-        #map-container svg text, #map-container svg tspan { fill: #ffffff !important; }
-        #map-container svg path { stroke-linecap: round; stroke-linejoin: round; }
-        #map-container svg path:hover { stroke: #000000 !important; cursor: pointer; filter: brightness(1.1); }
+        #map-container svg:active {
+            cursor: grabbing;
+        }
 
+        /* Forzar texto blanco */
+        #map-container svg text,
+        #map-container svg tspan {
+            fill: #ffffff !important;
+        }
+
+        /* Estilos base para trazados */
+        #map-container svg path {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: fill 0.2s ease;
+        }
+
+        #map-container svg path:hover,
+        #map-container svg path.selected {
+            stroke: #000000 !important;
+            cursor: pointer;
+        }
+
+        /* Tooltip Flotante */
         .map-tooltip {
             position: fixed;
             background: rgba(17, 24, 39, 0.95);
@@ -108,32 +114,31 @@
             pointer-events: none;
             display: none;
             z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             transform: translate(-50%, -120%);
             white-space: nowrap;
+        }
+
+        .loading {
+            color: #9ca3af;
+            font-size: 15px;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
 
-    <div class="controls">
-        <div class="button-group">
-            <button class="btn active" id="btn-bolivia" onclick="cargarMapa('bolivia')">Bolivianos</button>
-            <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguayos</button>
-            <button class="btn" id="btn-peru" onclick="cargarMapa('peru')">Peruanos</button>
-        </div>
-
-        <!-- Panel Editor Secreto -->
-        <div class="color-picker-tool" id="editor-panel">
-            <label for="paintColor">Pincel:</label>
-            <input type="color" id="paintColor" value="#b91c1c">
-            <button class="btn" onclick="exportarSVG()" style="background:#238636; color:#fff;">Guardar SVG</button>
-        </div>
+    <div class="button-group">
+        <button class="btn" id="btn-bolivia" onclick="cargarMapa('bolivia')">Bolivianos</button>
+        <button class="btn" id="btn-paraguay" onclick="cargarMapa('paraguay')">Paraguayos</button>
+        <button class="btn" id="btn-peru" onclick="cargarMapa('peru')">Peruanos</button>
     </div>
 
     <div id="map-container">
-        <div style="color: #9ca3af;">Cargando mapa...</div>
+        <div class="loading">Cargando mapa...</div>
     </div>
 
+    <!-- Elemento Tooltip -->
     <div id="tooltip" class="map-tooltip"></div>
 
     <script>
@@ -141,225 +146,334 @@
         const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
         const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const esModoEditor = urlParams.get('editor') === 'true';
+        const tablaColores = {
+            '#FFFFE5': '#ffffff',
+            '#F5FCAB': '#f87171',
+            '#B8E599': '#ef4444',
+            '#78C679': '#dc2626',
+            '#2DAE58': '#b91c1c',
+            '#00703F': '#7f1d1d'
+        };
 
-        let scale = 1, pointX = 0, pointY = 0, startX = 0, startY = 0;
-        let isDragging = false, initialPinchDist = 0, initialScale = 1;
+        const codigosAMBA = {
+            'p02122': 'Vicente López',
+            'p02106': 'San Isidro',
+            'p02105': 'San Fernando',
+            'p02113': 'Tigre',
+            'p02035': 'Escobar',
+            'p02016': 'Campana',
+            'p02125': 'Zárate',
+            'p02037': 'Exaltación de la Cruz',
+            'p02071': 'Luján',
+            'p02051': 'General Rodríguez',
+            'p02089': 'Pilar',
+            'p02130': 'Malvinas Argentinas',
+            'p02129': 'José C. Paz',
+            'p02053': 'San Miguel',
+            'p02079': 'Moreno',
+            'p02052': 'General San Martín',
+            'p02118': 'Tres de Febrero',
+            'p02080': 'Morón',
+            'p02134': 'Hurlingham',
+            'p02133': 'Ituzaingó',
+            'p02077': 'Merlo',
+            'p02075': 'Marcos Paz',
+            'p02061': 'La Matanza',
+            'p02132': 'Ezeiza',
+            'p02045': 'General Las Heras',
+            'p02017': 'Cañuelas',
+            'p02109': 'San Vicente',
+            'p02063': 'La Plata',
+            'p02012': 'Berisso',
+            'p02034': 'Ensenada',
+            'p02011': 'Berazategui',
+            'p02092': 'Quilmes',
+            'p02004': 'Avellaneda',
+            'p02062': 'Lanús',
+            'p02070': 'Lomas de Zamora',
+            'p02036': 'Esteban Echeverría',
+            'p02003': 'Almirante Brown',
+            'p02038': 'Florencio Varela',
+            'p02128': 'Presidente Perón'
+        };
+
+        // Variables de Zoom y Transformación
+        let scale = 1;
+        let pointX = 0;
+        let pointY = 0;
+        let startX = 0;
+        let startY = 0;
+        let isDragging = false;
+        let initialPinchDist = 0;
+        let initialScale = 1;
         let listenersAsignados = false;
-        const MAX_ZOOM = 120;
 
-        if (esModoEditor) {
-            document.getElementById('editor-panel').style.display = 'flex';
-        }
+        const MAX_ZOOM = 120;
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
-            document.querySelectorAll('.button-group .btn').forEach(b => b.classList.remove('active'));
-            
+            const btnBolivia = document.getElementById('btn-bolivia');
+            const btnParaguay = document.getElementById('btn-paraguay');
+            const btnPeru = document.getElementById('btn-peru');
+
+            btnBolivia.classList.remove('active');
+            btnParaguay.classList.remove('active');
+            btnPeru.classList.remove('active');
+
             let url = URL_BOLIVIA;
-            if (pais === 'bolivia') { document.getElementById('btn-bolivia').classList.add('active'); url = URL_BOLIVIA; }
-            if (pais === 'paraguay') { document.getElementById('btn-paraguay').classList.add('active'); url = URL_PARAGUAY; }
-            if (pais === 'peru') { document.getElementById('btn-peru').classList.add('active'); url = URL_PERU; }
+
+            if (pais === 'bolivia') {
+                btnBolivia.classList.add('active');
+                url = URL_BOLIVIA;
+            } else if (pais === 'paraguay') {
+                btnParaguay.classList.add('active');
+                url = URL_PARAGUAY;
+            } else if (pais === 'peru') {
+                btnPeru.classList.add('active');
+                url = URL_PERU;
+            }
+
+            deseleccionarTodo();
 
             try {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('Error al cargar');
+                if (!response.ok) throw new Error('Error al cargar el SVG');
                 let svgCode = await response.text();
+
+                Object.keys(tablaColores).forEach(verde => {
+                    const rojo = tablaColores[verde];
+                    const regex = new RegExp(verde, 'gi');
+                    svgCode = svgCode.replace(regex, rojo);
+                });
 
                 requestAnimationFrame(() => {
                     container.innerHTML = svgCode;
+                    
                     const svg = container.querySelector('svg');
                     if (svg) {
+                        // Asegurar que el SVG mantenga proporciones y se centre de forma nativa
                         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         resetearZoom(svg);
-                        configurarInteraccionPath(svg);
+                        configurarPaths(svg);
                     }
+
                     if (!listenersAsignados) {
                         configurarEventosGlobales(container);
                         listenersAsignados = true;
                     }
                 });
-            } catch (err) {
-                container.innerHTML = `<div style="color:#ef4444">Error al cargar mapa.</div>`;
+
+            } catch (error) {
+                container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
+                console.error(error);
             }
-        }
-
-        // Convierte color RGB devuelto por el navegador a formato Hexadecimal para el input type="color"
-        function rgbToHex(rgbStr) {
-            if (!rgbStr || rgbStr === 'none' || rgbStr === 'transparent') return '#ffffff';
-            if (rgbStr.startsWith('#')) return rgbStr;
-
-            const rgbValues = rgbStr.match(/\d+/g);
-            if (!rgbValues || rgbValues.length < 3) return '#ffffff';
-
-            const r = parseInt(rgbValues[0]).toString(16).padStart(2, '0');
-            const g = parseInt(rgbValues[1]).toString(16).padStart(2, '0');
-            const b = parseInt(rgbValues[2]).toString(16).padStart(2, '0');
-
-            return `#${r}${g}${b}`;
-        }
-
-        function configurarInteraccionPath(svg) {
-            const tooltip = document.getElementById('tooltip');
-            const paths = svg.querySelectorAll('path');
-
-            paths.forEach(path => {
-                // CLIC IZQUIERDO: Pintar (Modo Editor) o Seleccionar (Modo Viewer)
-                path.onclick = (e) => {
-                    e.stopPropagation();
-
-                    if (esModoEditor) {
-                        const colorSeleccionado = document.getElementById('paintColor').value;
-                        path.style.setProperty('fill', colorSeleccionado, 'important');
-                    } else {
-                        paths.forEach(p => p.classList.remove('selected'));
-                        path.classList.add('selected');
-                    }
-
-                    mostrarTooltip(e, path);
-                };
-
-                // CLIC DERECHO: Cuentagotas (Copiar color del departamento al pincel)
-                path.oncontextmenu = (e) => {
-                    if (!esModoEditor) return;
-                    e.preventDefault(); // Evita que se abra el menú contextual del navegador
-                    e.stopPropagation();
-
-                    // Obtiene el color real computado del path
-                    const computedStyle = window.getComputedStyle(path);
-                    const colorActual = path.style.fill || computedStyle.fill;
-                    
-                    const hexColor = rgbToHex(colorActual);
-                    document.getElementById('paintColor').value = hexColor;
-
-                    mostrarTooltip(e, path, `Color copiado: ${hexColor}`);
-                };
-            });
-        }
-
-        function mostrarTooltip(e, path, textoAdicional = '') {
-            const tooltip = document.getElementById('tooltip');
-            const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
-            
-            if (rawName) {
-                tooltip.textContent = textoAdicional ? `${rawName} (${textoAdicional})` : rawName;
-                tooltip.style.display = 'block';
-                tooltip.style.left = `${e.clientX || e.touches[0].clientX}px`;
-                tooltip.style.top = `${(e.clientY || e.touches[0].clientY) - 15}px`;
-            }
-        }
-
-        function exportarSVG() {
-            const container = document.getElementById('map-container');
-            const svg = container.querySelector('svg');
-            if (!svg) return;
-
-            const svgData = new XMLSerializer().serializeToString(svg);
-            const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'mapa_editado.svg';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
 
         function resetearZoom(svg) {
-            scale = 1; pointX = 0; pointY = 0;
+            scale = 1;
+            pointX = 0;
+            pointY = 0;
             aplicarTransformacion(svg);
+        }
+
+        function deseleccionarTodo() {
+            const container = document.getElementById('map-container');
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+
+            if (container) {
+                const paths = container.querySelectorAll('path.selected');
+                paths.forEach(p => p.classList.remove('selected'));
+            }
+        }
+
+        function obtenerNombreCorrecto(path) {
+            const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
+            const key = rawName.trim().toLowerCase();
+
+            if (codigosAMBA[key]) {
+                return codigosAMBA[key];
+            }
+
+            return rawName.replace(/_/g, ' ').trim();
+        }
+
+        function actualizarGrosorBordes(svg) {
+            const calculatedStroke = 0.2 / scale;
+            const finalStrokeWidth = Math.max(calculatedStroke, 0.1);
+            
+            const paths = svg.querySelectorAll('path');
+            paths.forEach(path => {
+                path.style.setProperty('stroke', '#101010', 'important');
+                path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
+            });
         }
 
         function aplicarTransformacion(svg) {
             svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-            const strokeWidth = Math.max(0.2 / scale, 0.1);
-            svg.querySelectorAll('path').forEach(p => {
-                p.style.setProperty('stroke', '#101010', 'important');
-                p.style.setProperty('stroke-width', `${strokeWidth}px`, 'important');
+            actualizarGrosorBordes(svg);
+        }
+
+        function getDistance(touches) {
+            return Math.hypot(
+                touches[0].clientX - touches[1].clientX,
+                touches[0].clientY - touches[1].clientY
+            );
+        }
+
+        function getMidpoint(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
+        }
+
+        function configurarPaths(svg) {
+            const tooltip = document.getElementById('tooltip');
+            const paths = svg.querySelectorAll('path');
+            
+            paths.forEach(path => {
+                const nombre = obtenerNombreCorrecto(path);
+                if (!nombre) return;
+
+                const mostrarTooltip = (e) => {
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                    tooltip.textContent = nombre;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = `${clientX}px`;
+                    tooltip.style.top = `${clientY - 15}px`;
+                };
+
+                path.onclick = (e) => {
+                    e.stopPropagation();
+                    paths.forEach(p => p.classList.remove('selected'));
+                    path.classList.add('selected');
+                    mostrarTooltip(e);
+                };
             });
         }
 
-        function getDistance(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
-        function getMidpoint(t) { return { x: (t[0].clientX + t[1].clientX)/2, y: (t[0].clientY + t[1].clientY)/2 }; }
-
         function configurarEventosGlobales(container) {
+            // Zoom con rueda de mouse (PC)
             container.addEventListener('wheel', (e) => {
                 const svg = container.querySelector('svg');
                 if (!svg) return;
+
                 e.preventDefault();
                 const rect = container.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
-                const factor = e.deltaY < 0 ? 1.25 : 0.8;
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const delta = -e.deltaY;
+                const factor = delta > 0 ? 1.25 : 0.8;
                 const newScale = Math.min(Math.max(1, scale * factor), MAX_ZOOM);
 
                 if (newScale !== scale) {
                     pointX = mouseX - (mouseX - pointX) * (newScale / scale);
                     pointY = mouseY - (mouseY - pointY) * (newScale / scale);
                     scale = newScale;
-                    if (scale === 1) { pointX = 0; pointY = 0; }
+
+                    if (scale === 1) {
+                        pointX = 0;
+                        pointY = 0;
+                    }
+
                     aplicarTransformacion(svg);
                 }
             }, { passive: false });
 
+            // Arrastrar con mouse (PC)
             container.addEventListener('mousedown', (e) => {
-                // Solo inicia arrastre con clic izquierdo (button 0)
-                if (scale > 1 && e.button === 0) { 
-                    isDragging = true; 
-                    startX = e.clientX - pointX; 
-                    startY = e.clientY - pointY; 
+                if (scale > 1) {
+                    isDragging = true;
+                    startX = e.clientX - pointX;
+                    startY = e.clientY - pointY;
                 }
             });
 
             window.addEventListener('mousemove', (e) => {
                 const svg = container.querySelector('svg');
                 if (!isDragging || !svg) return;
-                pointX = e.clientX - startX; pointY = e.clientY - startY;
+                pointX = e.clientX - startX;
+                pointY = e.clientY - startY;
                 aplicarTransformacion(svg);
             });
 
-            window.addEventListener('mouseup', () => isDragging = false);
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
 
+            // GESTOS TÁCTILES (Celular: Pinch Zoom y Drag)
             container.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
-                    isDragging = true; startX = e.touches[0].clientX - pointX; startY = e.touches[0].clientY - pointY;
+                    isDragging = true;
+                    startX = e.touches[0].clientX - pointX;
+                    startY = e.touches[0].clientY - pointY;
                 } else if (e.touches.length === 2) {
-                    isDragging = false; initialPinchDist = getDistance(e.touches); initialScale = scale;
+                    isDragging = false;
+                    initialPinchDist = getDistance(e.touches);
+                    initialScale = scale;
                 }
             }, { passive: true });
 
             container.addEventListener('touchmove', (e) => {
                 const svg = container.querySelector('svg');
                 if (!svg) return;
+
                 if (e.touches.length === 1 && isDragging && scale > 1) {
-                    pointX = e.touches[0].clientX - startX; pointY = e.touches[0].clientY - startY;
+                    pointX = e.touches[0].clientX - startX;
+                    pointY = e.touches[0].clientY - startY;
                     aplicarTransformacion(svg);
                 } else if (e.touches.length === 2) {
                     e.preventDefault();
                     const dist = getDistance(e.touches);
                     if (initialPinchDist === 0) return;
-                    const newScale = Math.min(Math.max(1, initialScale * (dist / initialPinchDist)), MAX_ZOOM);
+
+                    const factor = dist / initialPinchDist;
+                    const newScale = Math.min(Math.max(1, initialScale * factor), MAX_ZOOM);
+
                     if (newScale !== scale) {
                         const rect = container.getBoundingClientRect();
                         const mid = getMidpoint(e.touches);
-                        const mouseX = mid.x - rect.left, mouseY = mid.y - rect.top;
+                        const mouseX = mid.x - rect.left;
+                        const mouseY = mid.y - rect.top;
+
                         pointX = mouseX - (mouseX - pointX) * (newScale / scale);
                         pointY = mouseY - (mouseY - pointY) * (newScale / scale);
                         scale = newScale;
-                        if (scale === 1) { pointX = 0; pointY = 0; }
+
+                        if (scale === 1) {
+                            pointX = 0;
+                            pointY = 0;
+                        }
+
                         aplicarTransformacion(svg);
                     }
                 }
             }, { passive: false });
 
-            container.addEventListener('touchend', () => isDragging = false);
+            container.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    initialPinchDist = 0;
+                }
+                if (e.touches.length === 0) {
+                    isDragging = false;
+                }
+            });
+
+            container.addEventListener('mouseleave', deseleccionarTodo);
         }
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('path')) document.getElementById('tooltip').style.display = 'none';
-        });
+        document.addEventListener('click', deseleccionarTodo);
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('path') && !e.target.closest('#map-container')) {
+                deseleccionarTodo();
+            }
+        }, { passive: true });
 
+        // Carga inicial
         cargarMapa('bolivia');
     </script>
 </body>
