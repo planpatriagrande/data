@@ -88,13 +88,27 @@
             stroke-linejoin: round;
             transition: fill 0.2s ease, stroke-width 0.2s ease;
         }
-        /* Sobrescribe los colores del SVG desde el index.html */
-        #map-container svg path[fill="#edf8e9"] { fill: #eff6ff !important; } /* Nivel 1 (Más claro) */
-        #map-container svg path[fill="#c7e9c0"] { fill: #bfdbfe !important; } /* Nivel 2 */
-        #map-container svg path[fill="#a1d99b"] { fill: #60a5fa !important; } /* Nivel 3 */
-        #map-container svg path[fill="#74c476"] { fill: #3b82f6 !important; } /* Nivel 4 */
-        #map-container svg path[fill="#31a354"] { fill: #1d4ed8 !important; } /* Nivel 5 */
-        #map-container svg path[fill="#006d2c"] { fill: #1e3a8a !important; } /* Nivel 6 (Más oscuro) */
+
+        /* Sobrescribe la escala de verdes a tonos azules desde CSS */
+        #map-container svg path[fill="#edf8e9"],
+        #map-container svg rect[fill="#edf8e9"] { fill: #eff6ff !important; } /* Nivel 1 (Más claro) */
+        
+        #map-container svg path[fill="#c7e9c0"],
+        #map-container svg rect[fill="#c7e9c0"] { fill: #bfdbfe !important; } /* Nivel 2 */
+        
+        #map-container svg path[fill="#a1d99b"],
+        #map-container svg rect[fill="#a1d99b"] { fill: #60a5fa !important; } /* Nivel 3 */
+        
+        #map-container svg path[fill="#74c476"],
+        #map-container svg rect[fill="#74c476"] { fill: #3b82f6 !important; } /* Nivel 4 */
+        
+        #map-container svg path[fill="#31a354"],
+        #map-container svg rect[fill="#31a354"] { fill: #1d4ed8 !important; } /* Nivel 5 */
+        
+        #map-container svg path[fill="#006d2c"],
+        #map-container svg rect[fill="#006d2c"] { fill: #1e3a8a !important; } /* Nivel 6 (Más oscuro) */
+
+        /* Efecto al pasar el mouse por un departamento */
         #map-container svg path:hover {
             stroke: #ffffff !important;
             stroke-width: 1px !important;
