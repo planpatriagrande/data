@@ -147,7 +147,7 @@
         const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
-        // Banderas (Rutas apuntando a la carpeta data/)
+        // Banderas
         const BANDERA_PARAGUAY = './bandera_paraguay.svg';
         const BANDERA_BOLIVIA = './bandera_bolivia.svg';
         const BANDERA_PERU = './bandera_peru.svg';
@@ -286,10 +286,9 @@
             // =========================================================
             // PARAMETROS DE AJUSTE MANUAL
             // =========================================================
-            const ANCHO_BANDERA = 70; // Ancho
-            const ALTO_BANDERA = 30;   // Alto (Proporción 3:2)
-            const X_OFFSET = 55;        // Desplazamiento X (+ derecha, - izquierda)
-            const Y_OFFSET = -55;        // Desplazamiento Y (+ abajo, - arriba)
+            const ESCALA_PORCENTAJE = 8;  // Tamaño relativo respecto al ancho del mapa (8%)
+            const X_OFFSET = 55;          // Desplazamiento X (+ derecha, - izquierda)
+            const Y_OFFSET = -55;         // Desplazamiento Y (+ abajo, - arriba)
             // =========================================================
 
             let vbX = 0, vbY = 0, vbWidth = 1000, vbHeight = 1000;
@@ -307,16 +306,16 @@
                 vbHeight = parseFloat(svg.getAttribute('height')) || 1000;
             }
 
-            const xCentro = vbX + (vbWidth / 2) - (ANCHO_BANDERA / 2) + X_OFFSET;
-            const yCentro = vbY + (vbHeight / 2) - (ALTO_BANDERA / 2) + Y_OFFSET;
+            const anchoBandera = (vbWidth * ESCALA_PORCENTAJE) / 100;
+            const xCentro = vbX + (vbWidth / 2) - (anchoBandera / 2) + X_OFFSET;
+            const yCentro = vbY + (vbHeight / 2) + Y_OFFSET;
 
             const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
             img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlBandera);
             img.setAttribute('href', urlBandera);
             img.setAttribute('x', xCentro);
             img.setAttribute('y', yCentro);
-            img.setAttribute('width', ANCHO_BANDERA);
-            img.setAttribute('height', ALTO_BANDERA);
+            img.setAttribute('width', anchoBandera);
             img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
             
             img.style.pointerEvents = 'none';
