@@ -255,15 +255,15 @@
                     svgCode = svgCode.replace(regex, rojo);
                 });
 
-                requestAnimationFrame(async () => {
+                requestAnimationFrame(() => {
                     container.innerHTML = svgCode;
                     
                     const svg = container.querySelector('svg');
                     if (svg) {
                         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                         
-                        // Incrustar bandera en la capa más superficial (frente)
-                        await incrustarBanderaAlFrente(svg, urlBandera);
+                        // Insertar bandera exactamente al centro por encima de todo
+                        incrustarBanderaAlCentro(svg, urlBandera);
 
                         resetearZoom(svg);
                         configurarPaths(svg);
@@ -281,67 +281,53 @@
             }
         }
 
-        async function incrustarBanderaAlFrente(svg, urlBandera) {
+        function incrustarBanderaAlCentro(svg, urlBandera) {
             if (!svg) return;
 
-            try {
-                // Descargar el contenido plano de la bandera
-                const res = await fetch(urlBandera);
-                if (!res.ok) throw new Error('Error recuperando la bandera');
-                const rawBandera = await res.text();
+            // =========================================================
+            // PARAMETROS DE AJUSTE MANUAL (Modifícalos según tus necesidades)
+            // =========================================================
+            const ANCHO_BANDERA = 120; // Ancho de la bandera
+            const ALTO_BANDERA = 80;   // Alto de la bandera (3:2)
+            const X_OFFSET = 0;        // Desplazamiento X (+ derecha, - izquierda)
+            const Y_OFFSET = 0;        // Desplazamiento Y (+ abajo, - arriba)
+            // =========================================================
 
-                // Convertir a Data URI para garantizar renderizado inmediato sin fallos de proxy
-                const encodedBandera = 'data:image/svg+xml;utf8,' + encodeURIComponent(rawBandera);
+            // Leer dimensiones internas del mapa (ViewBox)
+            let vbX = 0, vbY = 0, vbWidth = 1000, vbHeight = 1000;
 
-                // Posicionamiento inteligente
-                let xPos = 0;
-                let yPos = 0;
-                const ancho = 120;
-                const alto = 80;
-
-                // Buscar el nodo que contiene el texto "2026"
-                const elementosTexto = Array.from(svg.querySelectorAll('text, tspan'));
-                const nodo2026 = elementosTexto.find(el => el.textContent.includes('2026'));
-
-                if (nodo2026) {
-                    const target = nodo2026.tagName.toLowerCase() === 'tspan' ? nodo2026.parentElement : nodo2026;
-                    
-                    // Si el elemento tiene coordenadas x e y directas
-                    const xAttr = parseFloat(target.getAttribute('x'));
-                    const yAttr = parseFloat(target.getAttribute('y'));
-
-                    if (!isNaN(xAttr) && !isNaN(yAttr)) {
-                        xPos = xAttr - (ancho / 2);
-                        yPos = yAttr - alto - 25;
-                    } else {
-                        // Respaldo por caja delimitadora
-                        const bbox = target.getBBox();
-                        xPos = (bbox.x + bbox.width / 2) - (ancho / 2);
-                        yPos = bbox.y - alto - 25;
-                    }
-                } else {
-                    // Si por algún motivo el SVG no tiene la etiqueta "2026", la pone en la esquina superior derecha del mapa
-                    const viewBox = svg.getAttribute('viewBox')?.split(' ').map(Number) || [0, 0, 800, 600];
-                    xPos = viewBox[2] - ancho - 40;
-                    yPos = 40;
+            if (svg.hasAttribute('viewBox')) {
+                const vbValues = svg.getAttribute('viewBox').trim().split(/[\s,]+/).map(Number);
+                if (vbValues.length === 4) {
+                    vbX = vbValues[0];
+                    vbY = vbValues[1];
+                    vbWidth = vbValues[2];
+                    vbHeight = vbValues[3];
                 }
-
-                // Crear elemento <image> nativo SVG
-                const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-                img.setAttribute('href', encodedBandera);
-                img.setAttribute('x', xPos);
-                img.setAttribute('y', yPos);
-                img.setAttribute('width', ancho);
-                img.setAttribute('height', alto);
-                img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                img.style.pointerEvents = 'none'; // Evita interferir con los clics en el mapa
-
-                // appendChild lo coloca AL FINAL del SVG, garantizando que quede POR ENCIMA de todo
-                svg.appendChild(img);
-
-            } catch (err) {
-                console.error('Error al incrustar la bandera al frente:', err);
+            } else {
+                vbWidth = parseFloat(svg.getAttribute('width')) || 1000;
+                vbHeight = parseFloat(svg.getAttribute('height')) || 1000;
             }
+
+            // Cálculo del centro exacto del canvas SVG
+            const xCentro = vbX + (vbWidth / 2) - (ANCHO_BANDERA / 2) + X_OFFSET;
+            const yCentro = vbY + (vbHeight / 2) - (ALTO_BANDERA / 2) + Y_OFFSET;
+
+            // Crear el elemento de la imagen
+            const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', urlBandera);
+            img.setAttribute('href', urlBandera); // Compatibilidad con SVG2
+            img.setAttribute('x', xCentro);
+            img.setAttribute('y', yCentro);
+            img.setAttribute('width', ANCHO_BANDERA);
+            img.setAttribute('height', ALTO_BANDERA);
+            img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            
+            // Asegura que los clics no queden atrapados por la imagen de la bandera
+            img.style.pointerEvents = 'none';
+
+            // Al agregarse al final del SVG (appendChild), queda garantizado que estará encima de todo
+            svg.appendChild(img);
         }
 
         function resetearZoom(svg) {
