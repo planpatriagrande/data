@@ -88,9 +88,8 @@
             fill: #ffffff !important;
         }
 
-        /* Color base de los bordes */
+        /* Estilos base para trazados */
         #map-container svg path {
-            stroke: #1f2937;
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: fill 0.2s ease;
@@ -98,7 +97,7 @@
 
         #map-container svg path:hover,
         #map-container svg path.selected {
-            stroke: #ffffff !important;
+            stroke: #000000 !important;
             cursor: pointer;
         }
 
@@ -271,14 +270,16 @@
             return rawName.replace(/_/g, ' ').trim();
         }
 
-        // Ajusta el grosor según la escala
+        // Calcula un grosor visible con límite mínimo y asegura color contrastante
         function actualizarGrosorBordes(svg) {
-            const baseStroke = 0.4;
-            const newStrokeWidth = baseStroke / scale;
+            // Se calcula para mantener visibilidad constante sin desaparecer
+            const calculatedStroke = 0.5 / scale;
+            const finalStrokeWidth = Math.max(calculatedStroke, 0.15);
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
-                path.style.strokeWidth = `${newStrokeWidth}px`;
+                path.style.setProperty('stroke', '#4b5563', 'important'); // Gris neutro bien definido
+                path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
             });
         }
 
@@ -331,7 +332,7 @@
                 });
             });
 
-            // Zoom con recálculo dinámico de stroke
+            // Zoom con recálculo de stroke mínimo
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const rect = container.getBoundingClientRect();
