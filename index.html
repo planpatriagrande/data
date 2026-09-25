@@ -51,9 +51,9 @@
 
         .btn.active { background: #b91c1c; color: #fff; }
 
-        /* Panel de Pincel/Editor (Oculto por defecto para los usuarios) */
+        /* Panel Editor Secreto */
         .color-picker-tool {
-            display: none; /* Se activa sólo si ingresás como Editor */
+            display: none;
             background: #010409;
             border: 1px solid #30363d;
             padding: 4px 10px;
@@ -141,7 +141,6 @@
         const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
         const URL_PERU = './Peruanos_en_Argentina_(2022).svg';
 
-        // Detectar si el usuario tiene acceso al Modo Editor por la URL (?editor=true)
         const urlParams = new URLSearchParams(window.location.search);
         const esModoEditor = urlParams.get('editor') === 'true';
 
@@ -150,7 +149,6 @@
         let listenersAsignados = false;
         const MAX_ZOOM = 120;
 
-        // Mostrar u ocultar el panel editor según el modo
         if (esModoEditor) {
             document.getElementById('editor-panel').style.display = 'flex';
         }
@@ -187,38 +185,71 @@
             }
         }
 
-        // Configuración de la interacción al hacer clic en un departamento
+        // Convierte color RGB devuelto por el navegador a formato Hexadecimal para el input type="color"
+        function rgbToHex(rgbStr) {
+            if (!rgbStr || rgbStr === 'none' || rgbStr === 'transparent') return '#ffffff';
+            if (rgbStr.startsWith('#')) return rgbStr;
+
+            const rgbValues = rgbStr.match(/\d+/g);
+            if (!rgbValues || rgbValues.length < 3) return '#ffffff';
+
+            const r = parseInt(rgbValues[0]).toString(16).padStart(2, '0');
+            const g = parseInt(rgbValues[1]).toString(16).padStart(2, '0');
+            const b = parseInt(rgbValues[2]).toString(16).padStart(2, '0');
+
+            return `#${r}${g}${b}`;
+        }
+
         function configurarInteraccionPath(svg) {
             const tooltip = document.getElementById('tooltip');
             const paths = svg.querySelectorAll('path');
 
             paths.forEach(path => {
+                // CLIC IZQUIERDO: Pintar (Modo Editor) o Seleccionar (Modo Viewer)
                 path.onclick = (e) => {
                     e.stopPropagation();
 
-                    // SI ESTÁ EN MODO EDITOR: Pintar con el color del Pincel
                     if (esModoEditor) {
                         const colorSeleccionado = document.getElementById('paintColor').value;
                         path.style.setProperty('fill', colorSeleccionado, 'important');
                     } else {
-                        // SI ESTÁ EN MODO VIEWER: Solo resaltar departamento seleccionado
                         paths.forEach(p => p.classList.remove('selected'));
                         path.classList.add('selected');
                     }
 
-                    // Mostrar Tooltip con el nombre de la ciudad/departamento
-                    const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
-                    if (rawName) {
-                        tooltip.textContent = rawName;
-                        tooltip.style.display = 'block';
-                        tooltip.style.left = `${e.clientX || e.touches[0].clientX}px`;
-                        tooltip.style.top = `${(e.clientY || e.touches[0].clientY) - 15}px`;
-                    }
+                    mostrarTooltip(e, path);
+                };
+
+                // CLIC DERECHO: Cuentagotas (Copiar color del departamento al pincel)
+                path.oncontextmenu = (e) => {
+                    if (!esModoEditor) return;
+                    e.preventDefault(); // Evita que se abra el menú contextual del navegador
+                    e.stopPropagation();
+
+                    // Obtiene el color real computado del path
+                    const computedStyle = window.getComputedStyle(path);
+                    const colorActual = path.style.fill || computedStyle.fill;
+                    
+                    const hexColor = rgbToHex(colorActual);
+                    document.getElementById('paintColor').value = hexColor;
+
+                    mostrarTooltip(e, path, `Color copiado: ${hexColor}`);
                 };
             });
         }
 
-        // Exportar el mapa editado
+        function mostrarTooltip(e, path, textoAdicional = '') {
+            const tooltip = document.getElementById('tooltip');
+            const rawName = path.querySelector('title')?.textContent || path.getAttribute('name') || path.getAttribute('id') || '';
+            
+            if (rawName) {
+                tooltip.textContent = textoAdicional ? `${rawName} (${textoAdicional})` : rawName;
+                tooltip.style.display = 'block';
+                tooltip.style.left = `${e.clientX || e.touches[0].clientX}px`;
+                tooltip.style.top = `${(e.clientY || e.touches[0].clientY) - 15}px`;
+            }
+        }
+
         function exportarSVG() {
             const container = document.getElementById('map-container');
             const svg = container.querySelector('svg');
@@ -273,7 +304,12 @@
             }, { passive: false });
 
             container.addEventListener('mousedown', (e) => {
-                if (scale > 1) { isDragging = true; startX = e.clientX - pointX; startY = e.clientY - pointY; }
+                // Solo inicia arrastre con clic izquierdo (button 0)
+                if (scale > 1 && e.button === 0) { 
+                    isDragging = true; 
+                    startX = e.clientX - pointX; 
+                    startY = e.clientY - pointY; 
+                }
             });
 
             window.addEventListener('mousemove', (e) => {
