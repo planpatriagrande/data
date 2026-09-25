@@ -74,14 +74,15 @@
             display: block;
         }
 
-        /* Forzar texto blanco */
+        /* Forzar texto blanco en todo el SVG */
         #map-container svg text,
         #map-container svg tspan {
             fill: #ffffff !important;
         }
 
         /* Bordes (stroke) en departamentos y ciudades */
-        #map-container svg path {
+        #map-container svg path,
+        #map-container svg polygon {
             stroke: #1f2937 !important;
             stroke-width: 0.3px !important;
             stroke-linecap: round;
@@ -89,7 +90,6 @@
             transition: fill 0.2s ease, stroke-width 0.2s ease;
         }
 
-        /* Efecto al pasar el mouse por un departamento */
         #map-container svg path:hover {
             stroke: #ffffff !important;
             stroke-width: 1px !important;
@@ -115,9 +115,22 @@
     </div>
 
     <script>
-        // Archivos SVG locales cargados directamente en tu repositorio
         const URL_BOLIVIA = './Bolivianos_en_Argentina_(2022).svg';
         const URL_PARAGUAY = './Paraguayos_en_Argentina_(2022).svg';
+
+        // Reglas CSS que forzaremos dentro del SVG para reemplazar cualquier color
+        const reglasColorPersonalizadas = `
+            <style id="custom-override-colors">
+                /* Sobrescribe estilos internos limpiando la escala de verdes a rojos */
+                *[fill*="#"], *[style*="fill"] {
+                    transition: fill 0.2s ease;
+                }
+                /* Convierte tonos verdes a rojos por luminosidad/matriz */
+                svg {
+                    filter: hue-rotate(240deg) saturate(1.2);
+                }
+            </style>
+        `;
 
         async function cargarMapa(pais) {
             const container = document.getElementById('map-container');
@@ -139,7 +152,11 @@
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Error al cargar el SVG');
-                const svgCode = await response.text();
+                let svgCode = await response.text();
+
+                // Insertar filtro directo al inicio del SVG para cambiar la tonalidad de verde a rojo/cálido
+                svgCode = svgCode.replace('<svg', '<svg style="filter: hue-rotate(230deg) saturate(1.4);"');
+
                 container.innerHTML = svgCode;
             } catch (error) {
                 container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
