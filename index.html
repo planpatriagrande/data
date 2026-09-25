@@ -276,12 +276,12 @@
         }
 
         function actualizarGrosorBordes(svg) {
-            const calculatedStroke = 0.5 / scale;
+            const calculatedStroke = 0.2 / scale;
             const finalStrokeWidth = Math.max(calculatedStroke, 0.1);
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
-                path.style.setProperty('stroke', '#4b5563', 'important');
+                path.style.setProperty('stroke', '#101010', 'important');
                 path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
             });
         }
