@@ -269,6 +269,13 @@
                     
                     const elementoBandera = await incrustarBanderaVectorial(nuevoSvg, urlBandera);
 
+                    // Guardar el grosor original de cada path la primera vez que se carga
+                    nuevoSvg.querySelectorAll('path').forEach(path => {
+                        const strokeAttr = path.getAttribute('stroke-width');
+                        const computed = parseFloat(window.getComputedStyle(path).strokeWidth);
+                        path.dataset.originalStroke = !isNaN(strokeAttr) ? parseFloat(strokeAttr) : (!isNaN(computed) ? computed : 0.1);
+                    });
+
                     resetearZoom(nuevoSvg);
                     configurarPaths(nuevoSvg);
 
@@ -406,24 +413,22 @@
         }
 
         function actualizarGrosorBordes(svg) {
-            const defaultStrokeWidth = Math.max(0.1 / scale, 0.05);
-            const blackStrokeWidth = Math.max(0.4 / scale, 0.1);
+            const baseScale = 0.1 / scale;
+            const thickScale = 0.5 / scale;
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
                 const strokeAttr = path.getAttribute('stroke');
                 const computedStyle = window.getComputedStyle(path);
-                const strokeColor = strokeAttr || computedStyle.stroke || '';
+                const strokeColor = strokeAttr || computedStyle.stroke || '#101010';
+                
+                const originalWidth = parseFloat(path.dataset.originalStroke) || 0.1;
 
-                const esNegro = strokeColor === '#000000' || strokeColor === '#101010' || strokeColor === 'rgb(0, 0, 0)' || strokeColor === 'black';
+                // Si el grosor original era mayor a 0.1, se escala a 0.5; de lo contrario a 0.1
+                const finalWidth = originalWidth > 0.1 ? Math.max(thickScale, 0.2) : Math.max(baseScale, 0.05);
 
-                if (esNegro) {
-                    path.style.setProperty('stroke', '#000000', 'important');
-                    path.style.setProperty('stroke-width', `${blackStrokeWidth}px`, 'important');
-                } else {
-                    path.style.setProperty('stroke', strokeColor || '#101010', 'important');
-                    path.style.setProperty('stroke-width', `${defaultStrokeWidth}px`, 'important');
-                }
+                path.style.setProperty('stroke', strokeColor, 'important');
+                path.style.setProperty('stroke-width', `${finalWidth}px`, 'important');
             });
         }
 
