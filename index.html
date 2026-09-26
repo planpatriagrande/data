@@ -78,7 +78,6 @@
             display: block;
             transform-origin: 0 0;
             cursor: grab;
-            /* Se remueve will-change para evitar rasterizado en baja resolución */
             shape-rendering: geometricPrecision;
             text-rendering: geometricPrecision;
             image-rendering: high-quality;
@@ -281,7 +280,6 @@
                         container.innerHTML = '';
                         container.appendChild(nuevoSvg);
 
-                        // Animación suave de aparición del mapa
                         const animEntrada = nuevoSvg.animate([
                             { opacity: 0 },
                             { opacity: 1 }
@@ -295,7 +293,6 @@
                             animEntrada.cancel();
                         };
 
-                        // Animación pro e independiente para la bandera (Ease-In largo, Ease-Out corto)
                         if (elementoBandera) {
                             elementoBandera.animate([
                                 { opacity: 0, transform: 'scale(0.7)' },
@@ -360,7 +357,6 @@
             const xCentro = vbX + (vbWidth / 2) - (anchoBandera / 2) + X_OFFSET;
             const yCentro = vbY + (vbHeight / 2) + Y_OFFSET;
 
-            // Grupo contenedor para animar la bandera con centro de transformación propio
             const grupoBandera = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
             grupoBandera.setAttribute('id', 'capa-bandera');
             grupoBandera.style.transformOrigin = `${xCentro + (anchoBandera / 2)}px ${yCentro + (anchoBandera / 2)}px`;
@@ -410,13 +406,24 @@
         }
 
         function actualizarGrosorBordes(svg) {
-            const calculatedStroke = 0.1 / scale;
-            const finalStrokeWidth = Math.max(calculatedStroke, 0.05);
+            const defaultStrokeWidth = Math.max(0.1 / scale, 0.05);
+            const blackStrokeWidth = Math.max(0.4 / scale, 0.1);
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
-                path.style.setProperty('stroke', '#101010', 'important');
-                path.style.setProperty('stroke-width', `${finalStrokeWidth}px`, 'important');
+                const strokeAttr = path.getAttribute('stroke');
+                const computedStyle = window.getComputedStyle(path);
+                const strokeColor = strokeAttr || computedStyle.stroke || '';
+
+                const esNegro = strokeColor === '#000000' || strokeColor === '#101010' || strokeColor === 'rgb(0, 0, 0)' || strokeColor === 'black';
+
+                if (esNegro) {
+                    path.style.setProperty('stroke', '#000000', 'important');
+                    path.style.setProperty('stroke-width', `${blackStrokeWidth}px`, 'important');
+                } else {
+                    path.style.setProperty('stroke', strokeColor || '#101010', 'important');
+                    path.style.setProperty('stroke-width', `${defaultStrokeWidth}px`, 'important');
+                }
             });
         }
 
