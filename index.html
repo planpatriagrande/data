@@ -269,8 +269,8 @@
                     
                     const elementoBandera = await incrustarBanderaVectorial(nuevoSvg, urlBandera);
 
-                    // Guardar el grosor original de cada path la primera vez que se carga
-                    nuevoSvg.querySelectorAll('path').forEach(path => {
+                    // Identificar y guardar el grosor original solo de los elementos de provincia
+                    obtenerPathsProvincias(nuevoSvg).forEach(path => {
                         const strokeAttr = path.getAttribute('stroke-width');
                         const computed = parseFloat(window.getComputedStyle(path).strokeWidth);
                         path.dataset.originalStroke = !isNaN(strokeAttr) ? parseFloat(strokeAttr) : (!isNaN(computed) ? computed : 0.1);
@@ -336,6 +336,30 @@
                 container.innerHTML = `<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>`;
                 console.error(error);
             }
+        }
+
+        // Función clave para separar los trazos de provincias de los departamentos/ciudades
+        function obtenerPathsProvincias(svg) {
+            // Buscamos si existe un grupo específico para provincias (por ID o clase común en GIS)
+            // Si tu SVG agrupa las provincias en un <g id="provincias"> o similar, lo detecta acá.
+            // De lo contrario, filtramos por los paths que tienen un grosor inicial más alto o pertenecen a capas externas.
+            const grupoProvincias = svg.querySelector('g#provincias, g[id*="provincia" i], g[id*="state" i]');
+            
+            if (grupoProvincias) {
+                return grupoProvincias.querySelectorAll('path');
+            }
+
+            // Plan B: Si no hay un grupo contenedor explícito, filtramos aquellos paths 
+            // que actúan como límites provinciales (por lo general tienen un grosor mayor o IDs específicos de provincia).
+            const todosLosPaths = Array.from(svg.querySelectorAll('path'));
+            
+            // Filtramos los que NO son departamentos individuales (por ejemplo, los que no empiezan con 'p' de partido/departamento o tienen mayor grosor inicial)
+            return todosLosPaths.filter(path => {
+                const id = (path.getAttribute('id') || '').toLowerCase();
+                const stroke = parseFloat(path.getAttribute('stroke-width')) || 0;
+                // Si el ID no parece un municipio/departamento interno o su stroke original es más grueso, se asume provincia
+                return stroke > 0.1 || id.includes('prov') || id.includes('limite');
+            });
         }
 
         async function incrustarBanderaVectorial(svg, urlBandera) {
@@ -414,10 +438,12 @@
 
         function actualizarGrosorBordes(svg) {
             const baseScale = 0.1 / scale;
-            const thickScale = 0.9 / scale;
+            const thickScale = 0.5 / scale;
             
-            const paths = svg.querySelectorAll('path');
-            paths.forEach(path => {
+            // Actualizar EXCLUSIVAMENTE los bordes de las provincias
+            const pathsProvincias = obtenerPathsProvincias(svg);
+            
+            pathsProvincias.forEach(path => {
                 const strokeAttr = path.getAttribute('stroke');
                 const computedStyle = window.getComputedStyle(path);
                 const strokeColor = strokeAttr || computedStyle.stroke || '#101010';
@@ -425,7 +451,7 @@
                 const originalWidth = parseFloat(path.dataset.originalStroke) || 0.1;
 
                 // Si el grosor original era mayor a 0.1, se escala a 0.5; de lo contrario a 0.1
-                const finalWidth = originalWidth > 0.1 ? Math.max(thickScale, 0.1) : Math.max(baseScale, 0.9);
+                const finalWidth = originalWidth > 0.1 ? Math.max(thickScale, 0.2) : Math.max(baseScale, 0.05);
 
                 path.style.setProperty('stroke', strokeColor, 'important');
                 path.style.setProperty('stroke-width', `${finalWidth}px`, 'important');
@@ -586,7 +612,7 @@
             container.addEventListener('mouseleave', deseleccionarTodo);
         }
 
-        document.addEventListener('click', deseleccionarTodo);
+        document.addEventListener('click', deseleccionarToolTodo = deseleccionarTodo);
         document.addEventListener('touchstart', (e) => {
             if (!e.target.closest('path') && !e.target.closest('#map-container')) {
                 deseleccionarTodo();
