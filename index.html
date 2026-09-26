@@ -414,7 +414,7 @@
 
         function actualizarGrosorBordes(svg) {
             const baseScale = 0.1 / scale;
-            const thickScale = 0.5 / scale;
+            const thickScale = 0.9 / scale;
             
             const paths = svg.querySelectorAll('path');
             paths.forEach(path => {
@@ -425,7 +425,7 @@
                 const originalWidth = parseFloat(path.dataset.originalStroke) || 0.1;
 
                 // Si el grosor original era mayor a 0.1, se escala a 0.5; de lo contrario a 0.1
-                const finalWidth = originalWidth > 0.1 ? Math.max(thickScale, 0.2) : Math.max(baseScale, 0.5);
+                const finalWidth = originalWidth > 0.1 ? Math.max(thickScale, 0.2) : Math.max(baseScale, 0.9);
 
                 path.style.setProperty('stroke', strokeColor, 'important');
                 path.style.setProperty('stroke-width', `${finalWidth}px`, 'important');
