@@ -1,1 +1,1 @@
-tr.ee/data
+https://tr.ee/data
