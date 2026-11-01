@@ -126,6 +126,7 @@
             peru: './bandera_peru.svg'
         };
         const MAX_ZOOM = 120;
+        const FACTOR_BORDES = 2; // 1 = grosor original del SVG, 2 = el doble, 3 = el triple...
 
         const container = document.getElementById('map-container');
         const tooltip = document.getElementById('tooltip');
@@ -157,6 +158,12 @@
 
                 svg.querySelectorAll('path').forEach(p => {
                     if (datos.nombres[p.id]) pathsPorId.set(p.id, p);
+                });
+
+                // Primero se leen todos los grosores y después se escriben, para no recalcular estilos 528 veces
+                const anchos = [...pathsPorId.values()].map(p => [p, parseFloat(getComputedStyle(p).strokeWidth)]);
+                anchos.forEach(([p, w]) => {
+                    if (w > 0) p.style.strokeWidth = `${w * FACTOR_BORDES}px`;
                 });
 
                 configurarEventos();
