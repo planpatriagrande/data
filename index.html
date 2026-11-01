@@ -148,6 +148,9 @@
                 svg = doc.querySelector('svg');
                 svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
+                // Los <title> del SVG generan el cartel nativo del navegador; los nombres salen de datos.json
+                svg.querySelectorAll('title').forEach(t => t.remove());
+
                 crearBandera();
                 container.innerHTML = '';
                 container.appendChild(svg);
@@ -246,18 +249,25 @@
                 b.addEventListener('click', () => mostrarPais(b.dataset.pais));
             });
 
-            // Click en un partido: se resuelve el nombre una sola vez, por delegación
-            svg.addEventListener('click', (e) => {
+            // Cartel con el nombre: sigue al cursor al pasar por encima de un partido.
+            // En celulares no hay "pasar por encima", así que también aparece al tocar.
+            const mostrarCartel = (e) => {
                 const path = e.target.closest('path');
                 const nombre = path && datos.nombres[path.id];
-                if (!nombre) return;
-                e.stopPropagation();
-                deseleccionarTodo();
-                path.classList.add('selected');
-                tooltip.textContent = nombre;
+                if (!nombre || isDragging) {
+                    tooltip.style.display = 'none';
+                    return false;
+                }
+                if (tooltip.textContent !== nombre) tooltip.textContent = nombre;
                 tooltip.style.display = 'block';
                 tooltip.style.left = `${e.clientX}px`;
                 tooltip.style.top = `${e.clientY - 15}px`;
+                return true;
+            };
+
+            svg.addEventListener('mousemove', mostrarCartel);
+            svg.addEventListener('click', (e) => {
+                if (mostrarCartel(e)) e.stopPropagation();
             });
 
             container.addEventListener('wheel', (e) => {
