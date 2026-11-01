@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Plan Patria Grande</title>
+    <link rel="icon" href="./argentina.svg" type="image/svg+xml">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px 8px;
+            overflow: hidden;
+        }
+
+        .button-group {
+            background: #010409;
+            padding: 5px;
+            border-radius: 12px;
+            display: inline-flex;
+            gap: 4px;
+            border: 1px solid #dbdbdb;
+            margin-bottom: 12px;
+            z-index: 10;
+        }
+
+        .btn {
+            background: transparent;
+            border: none;
+            color: #9ca3af;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+        }
+        .btn.active { background: #b91c1c; color: #ffffff; }
+        .btn:hover:not(.active) { color: #ffffff; }
+
+        #map-container {
+            width: 100%;
+            height: calc(100vh - 80px);
+            max-width: 900px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #map-container svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            transform-origin: 0 0;
+            cursor: grab;
+            shape-rendering: geometricPrecision;
+            text-rendering: geometricPrecision;
+        }
+        #map-container svg:active { cursor: grabbing; }
+
+        #map-container svg text,
+        #map-container svg tspan { fill: #ffffff !important; }
+
+        #map-container svg path {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: fill 0.25s ease;
+        }
+        #map-container svg path:hover,
+        #map-container svg path.selected {
+            stroke: #000000 !important;
+            cursor: pointer;
+        }
+
+        .map-tooltip {
+            position: fixed;
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid #dc2626;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transform: translate(-50%, -120%);
+            white-space: nowrap;
+        }
+
+        .loading { color: #9ca3af; font-size: 15px; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+    <div class="button-group">
+        <button class="btn" data-pais="paraguay">Paraguayos</button>
+        <button class="btn" data-pais="bolivia">Bolivianos</button>
+        <button class="btn" data-pais="peru">Peruanos</button>
+    </div>
+
+    <div id="map-container">
+        <div class="loading">Cargando mapa...</div>
+    </div>
+
+    <div id="tooltip" class="map-tooltip"></div>
+
+    <script>
+        // Un solo mapa (mapa.svg) + los datos de cada país (datos.json)
+        const NIVELES = ['#ffffff', '#f87171', '#ef4444', '#dc2626', '#b91c1c', '#7f1d1d'];
+        const BANDERAS = {
+            paraguay: './bandera_paraguay.svg',
+            bolivia: './bandera_bolivia.svg',
+            peru: './bandera_peru.svg'
+        };
+        const MAX_ZOOM = 120;
+
+        const container = document.getElementById('map-container');
+        const tooltip = document.getElementById('tooltip');
+
+        let datos, svg, banderaGrupo, banderaImg, animBandera;
+        let paisActual = null;
+        const pathsPorId = new Map();
+
+        let scale = 1, pointX = 0, pointY = 0;
+        let startX = 0, startY = 0, isDragging = false;
+        let initialPinchDist = 0, initialScale = 1;
+
+        async function iniciar() {
+            try {
+                const [rDatos, rMapa] = await Promise.all([fetch('./datos.json'), fetch('./mapa.svg')]);
+                if (!rDatos.ok || !rMapa.ok) throw new Error('No se pudieron cargar los archivos');
+
+                datos = await rDatos.json();
+                const doc = new DOMParser().parseFromString(await rMapa.text(), 'image/svg+xml');
+                svg = doc.querySelector('svg');
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+                crearBandera();
+                container.innerHTML = '';
+                container.appendChild(svg);
+
+                svg.querySelectorAll('path').forEach(p => {
+                    if (datos.nombres[p.id]) pathsPorId.set(p.id, p);
+                });
+
+                configurarEventos();
+                mostrarPais('paraguay');
+            } catch (error) {
+                container.innerHTML = '<div class="loading" style="color: #ef4444;">Error al cargar el mapa.</div>';
+                console.error(error);
+            }
+        }
+
+        function mostrarPais(pais) {
+            if (pais === paisActual) return;
+            paisActual = pais;
+            const d = datos.paises[pais];
+
+            document.querySelectorAll('.btn').forEach(b => b.classList.toggle('active', b.dataset.pais === pais));
+            deseleccionarTodo();
+
+            // Pintar: el color sale del nivel (0 a 5); los paths sin dato conservan el suyo
+            pathsPorId.forEach((path, id) => {
+                const nivel = d.niveles[id];
+                if (nivel !== undefined) path.style.fill = NIVELES[nivel];
+            });
+
+            // Textos de la leyenda
+            svg.querySelector('#t-pais').textContent = 'en ' + d.pais;
+            svg.querySelector('#t-gentilicio').textContent = d.gentilicio;
+            svg.querySelector('#t-total').textContent = 'Total: ' + d.total;
+
+            // Bandera
+            banderaImg.setAttribute('href', BANDERAS[pais]);
+            banderaImg.setAttributeNS('http://www.w3.org/1999/xlink', 'href', BANDERAS[pais]);
+            if (animBandera) animBandera.cancel();
+            animBandera = banderaGrupo.animate(
+                [{ opacity: 0, transform: 'scale(0.7)' }, { opacity: 1, transform: 'scale(1)' }],
+                { duration: 700, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' }
+            );
+        }
+
+        function crearBandera() {
+            const ESCALA_PORCENTAJE = 20, X_OFFSET = 55, Y_OFFSET = -70;
+            let vbX = 0, vbY = 0, vbW = 1000, vbH = 1000;
+
+            const vb = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+            if (vb.length === 4) [vbX, vbY, vbW, vbH] = vb;
+
+            const ancho = vbW * ESCALA_PORCENTAJE / 100;
+            const x = vbX + vbW / 2 - ancho / 2 + X_OFFSET;
+            const y = vbY + vbH / 2 + Y_OFFSET;
+
+            const SVG_NS = 'http://www.w3.org/2000/svg';
+            banderaGrupo = svg.ownerDocument.createElementNS(SVG_NS, 'g');
+            banderaGrupo.setAttribute('id', 'capa-bandera');
+            banderaGrupo.style.transformOrigin = `${x + ancho / 2}px ${y + ancho / 2}px`;
+            banderaGrupo.style.pointerEvents = 'none';
+
+            banderaImg = svg.ownerDocument.createElementNS(SVG_NS, 'image');
+            banderaImg.setAttribute('x', x);
+            banderaImg.setAttribute('y', y);
+            banderaImg.setAttribute('width', ancho);
+            banderaImg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+            banderaGrupo.appendChild(banderaImg);
+            svg.appendChild(banderaGrupo);
+        }
+
+        function deseleccionarTodo() {
+            tooltip.style.display = 'none';
+            if (svg) svg.querySelectorAll('path.selected').forEach(p => p.classList.remove('selected'));
+        }
+
+        function aplicarTransformacion() {
+            svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        function zoomEn(cx, cy, nuevaEscala) {
+            nuevaEscala = Math.min(Math.max(1, nuevaEscala), MAX_ZOOM);
+            if (nuevaEscala === scale) return;
+            pointX = cx - (cx - pointX) * (nuevaEscala / scale);
+            pointY = cy - (cy - pointY) * (nuevaEscala / scale);
+            scale = nuevaEscala;
+            if (scale === 1) { pointX = 0; pointY = 0; }
+            aplicarTransformacion();
+        }
+
+        const distancia = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+        function configurarEventos() {
+            document.querySelectorAll('.btn').forEach(b => {
+                b.addEventListener('click', () => mostrarPais(b.dataset.pais));
+            });
+
+            // Click en un partido: se resuelve el nombre una sola vez, por delegación
+            svg.addEventListener('click', (e) => {
+                const path = e.target.closest('path');
+                const nombre = path && datos.nombres[path.id];
+                if (!nombre) return;
+                e.stopPropagation();
+                deseleccionarTodo();
+                path.classList.add('selected');
+                tooltip.textContent = nombre;
+                tooltip.style.display = 'block';
+                tooltip.style.left = `${e.clientX}px`;
+                tooltip.style.top = `${e.clientY - 15}px`;
+            });
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = container.getBoundingClientRect();
+                zoomEn(e.clientX - rect.left, e.clientY - rect.top, scale * (e.deltaY < 0 ? 1.25 : 0.8));
+            }, { passive: false });
+
+            container.addEventListener('mousedown', (e) => {
+                if (scale > 1) { isDragging = true; startX = e.clientX - pointX; startY = e.clientY - pointY; }
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                pointX = e.clientX - startX;
+                pointY = e.clientY - startY;
+                aplicarTransformacion();
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - pointX;
+                    startY = e.touches[0].clientY - pointY;
+                } else if (e.touches.length === 2) {
+                    isDragging = false;
+                    initialPinchDist = distancia(e.touches);
+                    initialScale = scale;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isDragging && scale > 1) {
+                    pointX = e.touches[0].clientX - startX;
+                    pointY = e.touches[0].clientY - startY;
+                    aplicarTransformacion();
+                } else if (e.touches.length === 2 && initialPinchDist) {
+                    e.preventDefault();
+                    const rect = container.getBoundingClientRect();
+                    const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                    const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                    zoomEn(cx, cy, initialScale * distancia(e.touches) / initialPinchDist);
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) initialPinchDist = 0;
+                if (e.touches.length === 0) isDragging = false;
+            });
+
+            container.addEventListener('mouseleave', deseleccionarTodo);
+            document.addEventListener('click', deseleccionarTodo);
+            document.addEventListener('touchstart', (e) => {
+                if (!e.target.closest('path') && !e.target.closest('#map-container')) deseleccionarTodo();
+            }, { passive: true });
+        }
+
+        iniciar();
+    </script>
+</body>
+</html>
