@@ -83,14 +83,6 @@
             cursor: pointer;
         }
 
-        /* --w: grosor en unidades del SVG para lograr los px pedidos con zoom 1; --z: zoom actual */
-        #map-container svg .borde {
-            stroke-width: calc(var(--w) / var(--z, 1) * 1px) !important;
-        }
-        #map-container svg .borde:hover {
-            stroke-width: calc(var(--w) / var(--z, 1) * 2.5px) !important;
-        }
-
         .map-tooltip {
             position: fixed;
             background: rgba(17, 24, 39, 0.95);
@@ -134,10 +126,8 @@
             peru: './bandera_peru.svg'
         };
         const MAX_ZOOM = 120;
-        // Bordes: grosor en píxeles de pantalla, el mismo con cualquier zoom
-        const BORDE_PARTIDO_PX = 1;
-        const BORDE_PROVINCIA_PX = 1.5;
-        const COLOR_BORDES = '#000000'; // color de los límites entre partidos (el original era blanco)
+        const FACTOR_BORDES = 2; // 1 = grosor original del SVG, 2 = el doble, 3 = el triple...
+        const COLOR_BORDES = '#6b7280'; // color de los límites entre partidos (el original era blanco)
 
         const container = document.getElementById('map-container');
         const tooltip = document.getElementById('tooltip');
@@ -145,8 +135,6 @@
         let datos, svg, banderaGrupo, banderaImg, animBandera;
         let paisActual = null;
         const pathsPorId = new Map();
-        const bordes = [];
-        let zoomEstilo = 1;
 
         let scale = 1, pointX = 0, pointY = 0;
         let startX = 0, startY = 0, isDragging = false;
@@ -169,26 +157,20 @@
                 container.innerHTML = '';
                 container.appendChild(svg);
 
+                // Ojo: hay ids repetidos (La Plata son 2 paths con el mismo id), por eso cada id guarda una lista
                 svg.querySelectorAll('path').forEach(p => {
-                    if (datos.nombres[p.id]) pathsPorId.set(p.id, p);
+                    if (!datos.nombres[p.id]) return;
+                    if (!pathsPorId.has(p.id)) pathsPorId.set(p.id, []);
+                    pathsPorId.get(p.id).push(p);
                 });
 
-                // Bordes: partidos en gris y líneas negras de provincia, con grosor fijo en pantalla.
-                // Primero se leen todos los estilos y después se escriben, para no recalcular 500 veces.
-                const lecturas = [...svg.querySelectorAll('path')].map(p => {
-                    const cs = getComputedStyle(p);
-                    return [p, parseFloat(cs.strokeWidth), cs.stroke];
+                // Bordes: se multiplica el grosor original de cada path y se cambia su color.
+                // Primero se leen todos los grosores y después se escriben, para no recalcular estilos 528 veces
+                const anchos = [...pathsPorId.values()].flat().map(p => [p, parseFloat(getComputedStyle(p).strokeWidth)]);
+                anchos.forEach(([p, w]) => {
+                    p.style.stroke = COLOR_BORDES;
+                    if (w > 0) p.style.strokeWidth = `${w * FACTOR_BORDES}px`;
                 });
-                lecturas.forEach(([p, w, color]) => {
-                    if (pathsPorId.has(p.id)) {
-                        p.style.stroke = COLOR_BORDES;
-                        bordes.push([p, BORDE_PARTIDO_PX, escalaLocal(p)]);
-                    } else if (w >= 0.1 && color === 'rgb(0, 0, 0)') {
-                        bordes.push([p, BORDE_PROVINCIA_PX, escalaLocal(p)]);
-                    }
-                });
-                bordes.forEach(([p]) => p.classList.add('borde'));
-                calcularBordes();
 
                 configurarEventos();
                 mostrarPais('paraguay');
@@ -207,9 +189,9 @@
             deseleccionarTodo();
 
             // Pintar: el color sale del nivel (0 a 5); los paths sin dato conservan el suyo
-            pathsPorId.forEach((path, id) => {
+            pathsPorId.forEach((lista, id) => {
                 const nivel = d.niveles[id];
-                if (nivel !== undefined) path.style.fill = NIVELES[nivel];
+                if (nivel !== undefined) lista.forEach(p => { p.style.fill = NIVELES[nivel]; });
             });
 
             // Textos de la leyenda
@@ -261,27 +243,6 @@
 
         function aplicarTransformacion() {
             svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-            if (scale !== zoomEstilo) {
-                zoomEstilo = scale;
-                svg.style.setProperty('--z', scale);
-            }
-        }
-
-        // Cuánto agranda el SVG las unidades de un path (por las transformaciones de sus grupos)
-        function escalaLocal(el) {
-            let s = 1;
-            for (; el && el !== svg; el = el.parentNode) {
-                const t = el.transform && el.transform.baseVal.consolidate();
-                if (t) s *= Math.hypot(t.matrix.a, t.matrix.b);
-            }
-            return s;
-        }
-
-        // Pasa los píxeles pedidos a unidades locales de cada path (depende del tamaño de la ventana)
-        function calcularBordes() {
-            const [, , vbW, vbH] = svg.getAttribute('viewBox').trim().split(/[\s,]+/).map(Number);
-            const ajuste = Math.min(container.clientWidth / vbW, container.clientHeight / vbH);
-            bordes.forEach(([p, px, s]) => p.style.setProperty('--w', px / (s * ajuste)));
         }
 
         function zoomEn(cx, cy, nuevaEscala) {
@@ -371,7 +332,6 @@
             });
 
             container.addEventListener('mouseleave', deseleccionarTodo);
-            window.addEventListener('resize', calcularBordes);
             document.addEventListener('click', deseleccionarTodo);
             document.addEventListener('touchstart', (e) => {
                 if (!e.target.closest('path') && !e.target.closest('#map-container')) deseleccionarTodo();
